@@ -750,7 +750,7 @@ function workerMove() {
     var unit = closestUnit('worker');
     if (!unit)
         return null;
-    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) &&
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return t !== unit.territory && legalAutomaDestination(t) &&
         !at(t).some(function (u) { return u.owner === 'human'; }) &&
         !at(t).some(function (u) { return u.owner === 'automa' && u.type === 'worker' && u.id !== unit.id; }) &&
         !isInEnemyCombatNeighborhood(t); });
@@ -763,7 +763,7 @@ function nonAttack(type) {
     var unit = closestUnit(type);
     if (!unit)
         return null;
-    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) &&
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return t !== unit.territory && legalAutomaDestination(t) &&
         !at(t).some(function (u) { return u.owner === 'human'; }) &&
         !at(t).some(function (u) { return u.owner === 'automa' && isCombatUnit(u) && u.id !== unit.id; }); });
     if (!v.length)
@@ -776,7 +776,7 @@ function encounterFactory() {
     if (!unit)
         return null;
     // Encounter/Factory only uses neighborhoods of Automa units, not the home-base neighborhood.
-    var v = __spreadArray([], __read(automaArea(false)), false).filter(function (t) { return legalAutomaDestination(t) && (markers.encounter.has(t) || (territories[t].factory && !game.factoryCard)) && !at(t).some(function (u) { return u.owner === 'human'; }) && !at(t).some(function (u) { return u.owner === 'automa' && u.type === 'mech'; }); });
+    var v = __spreadArray([], __read(automaArea(false)), false).filter(function (t) { return t !== unit.territory && legalAutomaDestination(t) && (markers.encounter.has(t) || (territories[t].factory && !game.factoryCard)) && !at(t).some(function (u) { return u.owner === 'human'; }) && !at(t).some(function (u) { return u.owner === 'automa' && u.type === 'mech'; }); });
     if (!v.length)
         return null;
     v.sort(function (a, b) { return fd[a] - fd[b] || reading(a, b); });
@@ -792,7 +792,7 @@ function attackCombat(minPower) {
     var unit = closestCombat();
     if (!unit)
         return null;
-    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) && at(t).some(function (u) { return u.owner === 'human' && isCombatUnit(u); }); });
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return t !== unit.territory && legalAutomaDestination(t) && at(t).some(function (u) { return u.owner === 'human' && isCombatUnit(u); }); });
     if (!v.length)
         return null;
     v.sort(function (a, b) { return at(a).filter(function (u) { return u.owner === 'human' && isCombatUnit(u); }).length - at(b).filter(function (u) { return u.owner === 'human' && isCombatUnit(u); }).length || fd[a] - fd[b] || reading(a, b); });
@@ -802,7 +802,7 @@ function attackWorker() {
     var unit = closestCombat();
     if (!unit)
         return null;
-    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) && at(t).some(function (u) { return u.owner === 'human' && u.type === 'worker'; }) && !at(t).some(function (u) { return u.owner === 'human' && isCombatUnit(u); }); });
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return t !== unit.territory && legalAutomaDestination(t) && at(t).some(function (u) { return u.owner === 'human' && u.type === 'worker'; }) && !at(t).some(function (u) { return u.owner === 'human' && isCombatUnit(u); }); });
     if (!v.length)
         return null;
     v.sort(function (a, b) { return (markers.resources[b] || 0) - (markers.resources[a] || 0) || fd[a] - fd[b] || reading(a, b); });
