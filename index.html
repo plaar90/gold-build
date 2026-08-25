@@ -94,6 +94,25 @@ padding:10px 12px;font:12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif}
 .factory-alert-card{width:min(390px,100%);background:#111317;border:1px solid #343a44;border-radius:16px;padding:20px;text-align:center;box-shadow:0 24px 80px #000c}
 .factory-alert-card i{font-size:30px;color:#fff;margin-bottom:10px}.factory-alert-card h3{margin:0 0 6px;font-size:18px}.factory-alert-card p{margin:0 0 15px;color:var(--muted);font-size:12px}.factory-alert-card button{width:100%;padding:10px;border:0;border-radius:9px;background:#f3f5f7;color:#0a0b0d;font-weight:800}
 
+
+@media(max-width:600px){
+  .stack-control{
+    grid-template-columns:1fr;
+    grid-template-rows:auto auto;
+  }
+  .stack-buttons{
+    width:100%;
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+  }
+  .stack-buttons .count{
+    width:100%;
+    min-width:0;
+    display:grid;
+    place-items:center;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -730,6 +749,7 @@ function workerMove() {
         return null;
     var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) &&
         !at(t).some(function (u) { return u.owner === 'human'; }) &&
+        !at(t).some(function (u) { return u.owner === 'automa' && u.type === 'worker' && u.id !== unit.id; }) &&
         !isInEnemyCombatNeighborhood(t); });
     if (!v.length)
         return null;
@@ -741,7 +761,8 @@ function nonAttack(type) {
     if (!unit)
         return null;
     var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) &&
-        !at(t).some(function (u) { return u.owner === 'human'; }); });
+        !at(t).some(function (u) { return u.owner === 'human'; }) &&
+        !at(t).some(function (u) { return u.owner === 'automa' && isCombatUnit(u) && u.id !== unit.id; }); });
     if (!v.length)
         return null;
     v.sort(function (a, b) { return enemyCombatDistance(a) - enemyCombatDistance(b) || fd[a] - fd[b] || reading(a, b); });
@@ -756,7 +777,10 @@ function encounterFactory() {
     if (!v.length)
         return null;
     v.sort(function (a, b) { return fd[a] - fd[b] || reading(a, b); });
-    return { unit: unit, to: v[0], label: 'Factory / Encounter' };
+    return { unit: unit, to: v[0], label: 'Factory / Encounter', after: function () {
+            units.filter(function (u) { return u.owner === 'human' && u.type === 'worker' && u.territory === v[0]; }).forEach(function (u) { return u.territory = homeId('human'); });
+        } };
+
 }
 function attackCombat(minPower) {
     if (minPower === void 0) { minPower = 0; }
@@ -832,7 +856,7 @@ function openCombatOverlay() {
     var card = c.card;
     var p = +$('#power').value;
     var spend = card ? Math.min(p, card.combat.spend[p <= 7 ? 0 : p <= 13 ? 1 : 2]) : null;
-    var cardsPlayed = card ? Math.min(game.combatCards, card.combat.cards) : null;
+    var cardsPlayed = card ? Math.min(game.combatCards, card.combat.cards, aCount) : null;
     var cardSection = card ? "<div class=\"combat-details\"><div class=\"combat-detail\"><span class=\"label\">Automa power</span><b>".concat(spend, "</b><small>van ").concat(p, " beschikbaar</small></div><div class=\"combat-detail\"><span class=\"label\">Combat cards</span><b>").concat(cardsPlayed, "</b><small>van ").concat(game.combatCards, " beschikbaar</small></div></div>") : "<button class=\"combat-card-btn\" onclick=\"drawCombatForActiveBattle()\"><i class=\"fa-solid fa-cards-blank\"></i> Trek combatkaart voor Automa</button>";
     $('#combatTitle').textContent = "Combat \u00B7 Hex ".concat(c.territory + 1);
     $('#combatOverlayBody').innerHTML = "<div class=\"combat-vs\"><div class=\"combat-side\" style=\"border-color:".concat(factionColorForOwner('human'), "\"><strong style=\"color:").concat(factionColorForOwner('human'), "\">").concat(hName, "</strong><small>").concat(hCount, " combat unit").concat(hCount === 1 ? '' : 's', "</small></div><div class=\"combat-vs-mark\"><i class=\"fa-solid fa-bolt\"></i></div><div class=\"combat-side\" style=\"border-color:").concat(factionColorForOwner('automa'), "\"><strong style=\"color:").concat(factionColorForOwner('automa'), "\">").concat(aName, "</strong><small>").concat(aCount, " combat unit").concat(aCount === 1 ? '' : 's', "</small></div></div>").concat(cardSection, "<div class=\"combat-note\">Leg de gekozen power en combat cards fysiek open en bepaal de winnaar. De helper verwerkt daarna retreat, Automa-power/combatcards en een eventuele combatster automatisch.</div><div class=\"combat-actions\"><button class=\"combat-action human\" onclick=\"resolveCombat('human')\">").concat(hName, " wint</button><button class=\"combat-action automa\" onclick=\"resolveCombat('automa')\">").concat(aName, " wint</button></div>");
@@ -850,6 +874,17 @@ function drawCombatForActiveBattle() {
     openCombatOverlay();
     renderAll();
 }
+function collectCharacterArrival(territory) {
+    var character = units.find(function (u) { return u.owner === 'automa' && u.type === 'character' && u.territory === territory; });
+    if (!character)
+        return;
+    if (markers.encounter.has(territory))
+        markers.encounter.delete(territory);
+    if (territories[territory].factory && !game.factoryCard) {
+        game.factoryCard = true;
+        openFactoryAlert();
+    }
+}
 function resolveCombat(winner) {
     var c = game.activeCombat;
     if (!c)
@@ -858,15 +893,27 @@ function resolveCombat(winner) {
     if (card) {
         var p = +$('#power').value;
         var spend = Math.min(p, card.combat.spend[p <= 7 ? 0 : p <= 13 ? 1 : 2]);
+        var automaCombatCount = combatUnitsAt(c.territory, 'automa').length;
+        var cardsPlayed = Math.min(game.combatCards, card.combat.cards, automaCombatCount);
         $('#power').value = Math.max(0, p - spend);
-        game.combatCards = Math.max(0, game.combatCards - Math.min(game.combatCards, card.combat.cards));
+        game.combatCards = Math.max(0, game.combatCards - cardsPlayed);
     }
-    // All losing pieces in the contested territory retreat to their faction home base.
-    units.filter(function (u) { return u.owner === loser && u.territory === c.territory; }).forEach(function (u) { return u.territory = homeId(loser); });
+    if (loser === 'automa' && game.profile.t !== 'very hard') {
+        // Normal Automa combat units return to the faction mat (off-board), not the home territory.
+        // Any workers in the defeated territory retreat to the Automa home territory as in normal Scythe combat.
+        units = units.filter(function (u) { return !(u.owner === 'automa' && u.territory === c.territory && isCombatUnit(u)); });
+        units.filter(function (u) { return u.owner === 'automa' && u.territory === c.territory; }).forEach(function (u) { return u.territory = homeId('automa'); });
+    }
+    else {
+        // Human losers retreat home. Ultimaszyna also returns defeated units to its home territory.
+        units.filter(function (u) { return u.owner === loser && u.territory === c.territory; }).forEach(function (u) { return u.territory = homeId(loser); });
+    }
     if (winner === 'automa' && game.combatStars < 2) {
         game.combatStars++;
         awardStar("Combat-ster ".concat(game.combatStars, "/2"));
     }
+    if (winner === 'automa')
+        collectCharacterArrival(c.territory);
     game.activeCombat = null;
     game.combatVisible = false;
     game.combatTerritory = null;
@@ -884,14 +931,11 @@ function executeMove(m) {
     m.unit.territory = m.to;
     game.lastMovement = { from: from, to: m.to, owner: m.unit.owner, type: m.unit.type };
     (_a = m.after) === null || _a === void 0 ? void 0 : _a.call(m);
-    if (m.unit.type === 'character') {
-        if (markers.encounter.has(m.to)) markers.encounter.delete(m.to);
-        if (territories[m.to].factory && !game.factoryCard) {
-            game.factoryCard = true;
-            openFactoryAlert();
-        }
-    }
-    if (m.attack) setCombatState(m.to, game.lastCard, 'automa');
+    if (m.attack)
+        setCombatState(m.to, game.lastCard, 'automa');
+    // Encounter/Factory rewards are resolved only when the character remains there after combat.
+    if (m.unit.type === 'character' && !game.activeCombat)
+        collectCharacterArrival(m.to);
     return Object.assign(Object.assign({}, m), { from: from });
 }
 function gainOne(a, log) {
