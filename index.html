@@ -82,9 +82,12 @@ padding:10px 12px;font:12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif}
 
 
 /* Last movement + stacked-piece UI */
-.last-move-ring{pointer-events:none;fill:none;stroke-width:5;opacity:.9;filter:drop-shadow(0 0 7px currentColor)}
-.last-move-origin circle{fill:#0b0d10;stroke-width:3}
-.last-move-origin text{font-size:10px;font-weight:700;text-anchor:middle;dominant-baseline:middle;fill:#fff;pointer-events:none}
+.last-move-arrow{pointer-events:none;filter:drop-shadow(0 3px 7px #000e);z-index:99999}
+.last-move-arrow .halo{fill:none;stroke:#0b0d10;stroke-width:12;stroke-linecap:round;stroke-linejoin:round;opacity:.78}
+.last-move-arrow .path{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.last-move-arrow .head{fill:#fff}
+.last-move-arrow .label-bg{fill:#fff}
+.last-move-arrow .label{fill:#090b0e;font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:middle;letter-spacing:.02em}.last-move-arrow .unit-label{fill:#fff;font-size:10px;font-weight:700;text-anchor:middle;dominant-baseline:middle;letter-spacing:.12em;text-transform:uppercase;paint-order:stroke;stroke:#0b0d10;stroke-width:3px;stroke-linejoin:round}
 .board-count{position:absolute;right:-5px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--piece-color);color:#000;border:0;box-shadow:0 1px 3px #0008;display:grid;place-items:center;font-size:10px;font-weight:800;line-height:1}
 .stack-control{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;width:100%}.stack-quick-add{display:flex;align-items:center;gap:9px;min-width:0;cursor:pointer;touch-action:manipulation;border-radius:8px;padding:2px}.stack-quick-add:active{background:rgba(255,255,255,.07)}
 .stack-buttons{display:flex;align-items:center;gap:4px}
@@ -1387,18 +1390,6 @@ function render() {
         }
         finally { if (e_21) throw e_21.error; }
     }
-    if (game.lastMovement) {
-        var lm = game.lastMovement, moveColor = factionColorForOwner(lm.owner || 'automa');
-        var toT = territories[lm.to];
-        if (toT && !toT.home) {
-            svg.insertAdjacentHTML('beforeend','<polygon class="last-move-ring" points="'+poly(toT.x,toT.y,47)+'" style="stroke:'+moveColor+';color:'+moveColor+'"/>');
-        }
-        var fromT = territories[lm.from];
-        if (fromT && !fromT.home) {
-            var bx=fromT.x-32, by=fromT.y-27;
-            svg.insertAdjacentHTML('beforeend','<g class="last-move-origin"><circle cx="'+bx+'" cy="'+by+'" r="12" stroke="'+moveColor+'"/><text x="'+bx+'" y="'+(by+1)+'">'+(lm.from+1)+'</text></g>');
-        }
-    }
     var _loop_3 = function (key, f) {
         var selectedHuman = $('#humanFaction').value === key, selectedAutoma = $('#automaFaction').value === key;
         var stroke = f.color, text = key === 'white' ? '#11151b' : f.color;
@@ -1468,6 +1459,89 @@ function render() {
     finally {
         try { if (boardTerritories_2_1 && !boardTerritories_2_1.done && (_l = boardTerritories_2.return)) _l.call(boardTerritories_2); }
         finally { if (e_23) throw e_23.error; }
+    }
+    if (game.lastMovement) {
+        var lm = game.lastMovement;
+        var fromT = territories[lm.from], toT = territories[lm.to];
+        if (fromT && toT) {
+            var dx=toT.x-fromT.x, dy=toT.y-fromT.y;
+            var len=Math.sqrt(dx*dx+dy*dy) || 1;
+            var ux=dx/len, uy=dy/len;
+            var px=-uy, py=ux;
+
+            // Longer movement arrow: start closer to the origin and let the tip
+            // reach farther into the destination hex/home marker.
+            var startInset=fromT.home ? 34 : 14;
+            var endInset=toT.home ? 34 : 18;
+            var sx=fromT.x+ux*startInset, sy=fromT.y+uy*startInset;
+            var ex=toT.x-ux*endInset, ey=toT.y-uy*endInset;
+
+            var bend=Math.min(16,Math.max(7,len*.085));
+            var cx=(sx+ex)/2+px*bend, cy=(sy+ey)/2+py*bend;
+
+            // Tangent at the end for a long, sharp arrow head.
+            var t=.9;
+            var tx=2*(1-t)*(cx-sx)+2*t*(ex-cx);
+            var ty=2*(1-t)*(cy-sy)+2*t*(ey-cy);
+            var tl=Math.sqrt(tx*tx+ty*ty)||1, tux=tx/tl, tuy=ty/tl;
+            var hpx=-tuy, hpy=tux;
+            var headLen=12, headHalf=7;
+            var tipX=ex+tux*headLen, tipY=ey+tuy*headLen;
+            var hx1=tipX-tux*headLen+hpx*headHalf, hy1=tipY-tuy*headLen+hpy*headHalf;
+            var hx2=tipX-tux*headLen-hpx*headHalf, hy2=tipY-tuy*headLen-hpy*headHalf;
+
+            var mx=.25*sx+.5*cx+.25*ex, my=.25*sy+.5*cy+.25*ey;
+            var fromLabel=fromT.home ? 'H' : String(lm.from+1);
+            var toLabel=toT.home ? 'H' : String(lm.to+1);
+
+            // Compact pill: [unit icon] 4 [svg chevron] 11
+            var pillW=90, pillH=28, pillX=mx-pillW/2, pillY=my-pillH/2;
+            var iconCx=pillX+15, iconCy=my;
+            var fromX=pillX+30, chevronX=pillX+54, toX=pillX+66;
+
+            var unitSvg='';
+            if(lm.type==='worker'){
+                unitSvg=
+                    '<g fill="#000">'+
+                    '<circle cx="'+iconCx+'" cy="'+(iconCy-4.5)+'" r="3.6"/>'+
+                    '<path d="M '+(iconCx-6)+' '+(iconCy+7.5)+' C '+(iconCx-6)+' '+(iconCy+1)+' '+(iconCx-3.5)+' '+(iconCy-0.5)+' '+iconCx+' '+(iconCy-0.5)+
+                    ' C '+(iconCx+3.5)+' '+(iconCy-0.5)+' '+(iconCx+6)+' '+(iconCy+1)+' '+(iconCx+6)+' '+(iconCy+7.5)+' Z"/>'+
+                    '</g>';
+            }else if(lm.type==='mech'){
+                unitSvg=
+                    '<g fill="#000">'+
+                    '<rect x="'+(iconCx-7)+'" y="'+(iconCy-4)+'" width="14" height="9" rx="2"/>'+
+                    '<rect x="'+(iconCx-3.5)+'" y="'+(iconCy-8)+'" width="7" height="4" rx="1.3"/>'+
+                    '<rect x="'+(iconCx-9)+'" y="'+(iconCy+5)+'" width="6" height="3" rx="1.5"/>'+
+                    '<rect x="'+(iconCx+3)+'" y="'+(iconCy+5)+'" width="6" height="3" rx="1.5"/>'+
+                    '<rect x="'+(iconCx+6)+'" y="'+(iconCy-2)+'" width="5" height="2.5" rx="1"/>'+
+                    '</g>';
+            }else if(lm.type==='character'){
+                var starPts=[];
+                for(var si=0;si<10;si++){
+                    var sa=(-90+si*36)*Math.PI/180, sr=si%2===0?8:3.6;
+                    starPts.push((iconCx+Math.cos(sa)*sr)+','+(iconCy+Math.sin(sa)*sr));
+                }
+                unitSvg='<polygon points="'+starPts.join(' ')+'" fill="#000"/>';
+            }
+            var path='M '+sx+' '+sy+' Q '+cx+' '+cy+' '+ex+' '+ey;
+
+            svg.insertAdjacentHTML('beforeend',
+                '<g class="last-move-arrow" style="z-index:99999">'+
+                  '<path class="halo" d="'+path+'"/>'+
+                  '<path class="path" d="'+path+'"/>'+
+                  '<polygon class="head" points="'+tipX+','+tipY+' '+hx1+','+hy1+' '+hx2+','+hy2+'"/>'+
+                  '<rect class="label-bg" x="'+pillX+'" y="'+pillY+'" width="'+pillW+'" height="'+pillH+'" rx="14"/>'+
+                  '<circle class="unit-bg" cx="'+iconCx+'" cy="'+iconCy+'" r="12" fill="#fff"/>'+
+                  unitSvg+
+                  '<text class="label-number" x="'+fromX+'" y="'+(my+4)+'">'+fromLabel+'</text>'+
+                  '<g transform="translate('+chevronX+' '+my+')" fill="none" stroke="#090b0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'+
+                    '<path d="M -4 -5 L 1 0 L -4 5"/>'+
+                    '<path d="M 2 -5 L 7 0 L 2 5"/>'+
+                  '</g>'+
+                  '<text class="label-number" x="'+toX+'" y="'+(my+4)+'">'+toLabel+'</text>'+
+                '</g>');
+        }
     }
     svg.querySelectorAll('.territory').forEach(function (g) { return g.onclick = function (e) { return openHexMenu(+g.dataset.id, e); }; });
     svg.querySelectorAll('.combat-bolt').forEach(function (g) { return g.onclick = function (e) {
