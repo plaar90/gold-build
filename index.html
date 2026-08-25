@@ -75,6 +75,25 @@ button,.territory,.combat-bolt,.piece-choice{touch-action:manipulation;-webkit-t
   .hex-menu{left:4px!important;right:4px!important;bottom:4px!important}
 }
 
+
+#jsError{position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;display:none;
+background:#3b1117;color:#ffd8dd;border:1px solid #8d3340;border-radius:10px;
+padding:10px 12px;font:12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif}
+
+
+/* Last movement + stacked-piece UI */
+.last-move-ring{pointer-events:none;fill:none;stroke-width:5;opacity:.9;filter:drop-shadow(0 0 7px currentColor)}
+.last-move-origin circle{fill:#0b0d10;stroke-width:3}
+.last-move-origin text{font-size:10px;font-weight:700;text-anchor:middle;dominant-baseline:middle;fill:#fff;pointer-events:none}
+.board-count{position:absolute;right:-5px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--piece-color);color:#000;border:0;box-shadow:0 1px 3px #0008;display:grid;place-items:center;font-size:10px;font-weight:800;line-height:1}
+.stack-control{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;width:100%}
+.stack-buttons{display:flex;align-items:center;gap:4px}
+.stack-buttons button{width:46px;height:46px;border-radius:12px;border:1px solid var(--line);background:#0d0f12;color:#fff;font-size:30px;font-weight:300;line-height:1;cursor:pointer;touch-action:manipulation;display:grid;place-items:center;padding:0}
+.stack-buttons .count{min-width:28px;text-align:center;font-size:14px;color:var(--muted)}
+.factory-alert{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(3,5,8,.7);backdrop-filter:blur(6px)}
+.factory-alert-card{width:min(390px,100%);background:#111317;border:1px solid #343a44;border-radius:16px;padding:20px;text-align:center;box-shadow:0 24px 80px #000c}
+.factory-alert-card i{font-size:30px;color:#fff;margin-bottom:10px}.factory-alert-card h3{margin:0 0 6px;font-size:18px}.factory-alert-card p{margin:0 0 15px;color:var(--muted);font-size:12px}.factory-alert-card button{width:100%;padding:10px;border:0;border-radius:9px;background:#f3f5f7;color:#0a0b0d;font-weight:800}
+
 </style>
 </head>
 <body>
@@ -110,54 +129,109 @@ button,.territory,.combat-bolt,.piece-choice{touch-action:manipulation;-webkit-t
     </aside>
   </div>
 </div>
+
+<div id="factoryAlert" class="factory-alert hidden" role="dialog" aria-modal="true">
+  <div class="factory-alert-card">
+    <i class="fa-solid fa-industry"></i>
+    <h3>Factory veroverd</h3>
+    <p>Automa bereikt de Factory met zijn character en krijgt 1 Factory-kaart.</p>
+    <button onclick="closeFactoryAlert()">Doorgaan</button>
+  </div>
+</div>
 <div id="combatOverlay" class="combat-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="combatTitle">
   <div class="combat-dialog">
     <div class="combat-dialog-head"><div><div class="label">Combat</div><h2 id="combatTitle">Gevecht resolven</h2></div><button class="hex-menu-close" onclick="closeCombatOverlay()" aria-label="Sluiten">×</button></div>
     <div id="combatOverlayBody" class="combat-dialog-body"></div>
   </div>
 </div>
+<div id="jsError"></div>
 <script>
+window.onerror=function(message,source,line,column,error){
+  var box=document.getElementById('jsError');
+  if(box){
+    box.style.display='block';
+    box.textContent='JavaScript-fout: '+String(message)+' · regel '+String(line||'?');
+  }
+  return false;
+};
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
+var __values = (this && this.__values) || function(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+};
+var e_1, _c, e_2, _d, e_3, _e, e_4, _f, e_5, _g, e_6, _h, e_7, _j, e_8, _k, e_9, _l;
 // Compatibility helpers for older iOS Safari/WebKit.
 if (!Array.prototype.flatMap) {
-  Array.prototype.flatMap = function (callback, thisArg) {
-    return Array.prototype.concat.apply([], this.map(callback, thisArg));
-  };
+    Array.prototype.flatMap = function (callback, thisArg) {
+        return Array.prototype.concat.apply([], this.map(callback, thisArg));
+    };
 }
 if (!Array.prototype.includes) {
-  Array.prototype.includes = function (value, fromIndex) {
-    return this.indexOf(value, fromIndex || 0) !== -1;
-  };
+    Array.prototype.includes = function (value, fromIndex) {
+        return this.indexOf(value, fromIndex || 0) !== -1;
+    };
 }
 if (!Object.fromEntries) {
-  Object.fromEntries = function (entries) {
-    return Array.from(entries).reduce(function (obj, pair) {
-      obj[pair[0]] = pair[1];
-      return obj;
-    }, {});
-  };
+    Object.fromEntries = function (entries) {
+        return Array.from(entries).reduce(function (obj, pair) {
+            obj[pair[0]] = pair[1];
+            return obj;
+        }, {});
+    };
 }
 if (!Object.entries) {
-  Object.entries = function (obj) {
-    return Object.keys(obj).map(function (key) { return [key, obj[key]]; });
-  };
+    Object.entries = function (obj) {
+        return Object.keys(obj).map(function (key) { return [key, obj[key]]; });
+    };
 }
 if (!Object.values) {
-  Object.values = function (obj) {
-    return Object.keys(obj).map(function (key) { return obj[key]; });
-  };
+    Object.values = function (obj) {
+        return Object.keys(obj).map(function (key) { return obj[key]; });
+    };
 }
 if (window.NodeList && !NodeList.prototype.forEach) {
-  NodeList.prototype.forEach = Array.prototype.forEach;
+    NodeList.prototype.forEach = Array.prototype.forEach;
 }
 var _a, _b;
-const $ = s => document.querySelector(s), svg = $('#board');
-const profiles = {
+var $ = function (s) { return document.querySelector(s); }, svg = $('#board');
+var profiles = {
     easy: { t: 'easy', name: 'Autometta', rivers: 5, phase: 11, grid: [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 2, 2] },
     normal: { t: 'normal', name: 'Automa', rivers: 4, phase: 10, grid: [0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 2, 2] },
     hard: { t: 'hard', name: 'Automaszyna', rivers: 3, phase: 10, grid: [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 2, 2, 2] },
     'very hard': { t: 'very hard', name: 'Ultimaszyna', rivers: 0, phase: 9, grid: [1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 2, 2, 2] }
 };
-const cards = [
+var cards = [
     { id: 0, skip: false, star: true, combat: { spend: [6, 7, 7], cards: 1, resources: 1 }, actions: [{ move: [{ t: 'worker', faction: 'blue' }, { t: 'facobj' }, { t: 'character' }], gets: [{ t: 'power', q: 1 }, { t: 'worker', q: 1 }], enlist: ['power'] }, { move: [{ t: 'worker' }], gets: [{ t: 'power', q: 4 }], enlist: ['power'] }] },
     { id: 1, skip: false, star: true, combat: { spend: [5, 6, 7], cards: 2, resources: 2 }, actions: [{ move: [{ faction: 'white', t: 'facobj' }, { t: 'worker' }], gets: [{ faction: 'yellow', t: 'gold', q: 1 }, { t: 'gold', q: 1 }], enlist: [] }, { move: [{ faction: 'white', t: 'facobj' }, { t: 'worker' }], gets: [{ faction: 'yellow', t: 'gold', q: 1 }, { t: 'powercard', q: 1 }, { t: 'charormech', q: 1 }], enlist: ['gold'] }] },
     { id: 2, skip: false, star: true, combat: { spend: [3, 7, 7], cards: 0, resources: 0 }, actions: [{ move: [{ t: 'worker' }], gets: [{ t: 'power', q: 3 }], enlist: [] }, { move: [{ t: 'worker' }], gets: [{ t: 'power', q: 2 }, { t: 'worker', q: 1 }], enlist: ['popularity'] }] },
@@ -178,9 +252,9 @@ const cards = [
     { id: 17, skip: false, star: true, combat: { spend: [1, 1, 7], cards: 0, resources: 1 }, actions: [{ move: [{ t: 'facobj' }, { t: 'character' }], gets: [{ faction: 'green', t: 'worker', q: 1 }, { t: 'worker', q: 1 }, { t: 'gold', q: 1 }], enlist: [] }, { move: [{ t: 'facobj' }, { t: 'character' }], gets: [{ faction: 'green', t: 'charormech', q: 1 }, { t: 'worker', q: 1 }, { t: 'gold', q: 2 }], enlist: [] }] },
     { id: 18, skip: false, star: true, combat: { spend: [7, 7, 7], cards: 1, resources: 1 }, actions: [{ move: [{ t: 'attack', o: 'worker' }, { t: 'worker' }], gets: [{ t: 'worker', q: 1 }], enlist: [] }, { move: [{ faction: 'green', t: 'facobj' }, { t: 'attack', o: 'worker' }, { t: 'worker' }], gets: [{ t: 'power', q: 3 }, { t: 'gold', q: 1 }], enlist: ['powercard'] }] }
 ];
-let tool = 'select', selected = null, pending = null, uid = 1;
-let game = { profile: profiles.normal, tracker: 0, phase: 0, deck: [], discards: [], stars: 0, combatStars: 0, powerStar: false, coins: 0, combatCards: 0, factoryCard: false, lastCard: null, gameOver: false, combatVisible: false, combatTerritory: null, combatCardMode: false, activeCombat: null };
-const boardRows = [
+var tool = 'select', selected = null, pending = null, uid = 1;
+var game = { profile: profiles.normal, tracker: 0, phase: 0, deck: [], discards: [], stars: 0, combatStars: 0, powerStar: false, coins: 0, combatCards: 0, factoryCard: false, lastCard: null, gameOver: false, combatVisible: false, combatTerritory: null, combatCardMode: false, activeCombat: null, lastMovement: null };
+var boardRows = [
     [162, 253, 344, 435, 526, 617],
     [117, 208, 299, 390, 481, 572, 663],
     [162, 253, 344, 435, 526, 617],
@@ -190,15 +264,15 @@ const boardRows = [
     [162, 253, 344, 435, 526, 617],
     [390]
 ];
-const rowYs = [109, 187, 265, 343, 421, 499, 577, 655];
-const territories = [];
-let tid = 0;
-boardRows.forEach((xs, row) => xs.forEach((x, col) => territories.push({ id: tid++, row, col, x, y: rowYs[row], factory: row === 3 && col === 3, home: false })));
-const cellId = (row, col) => { var _a; return (_a = territories.find(t => !t.home && t.row === row && t.col === col)) === null || _a === void 0 ? void 0 : _a.id; };
+var rowYs = [109, 187, 265, 343, 421, 499, 577, 655];
+var territories = [];
+var tid = 0;
+boardRows.forEach(function (xs, row) { return xs.forEach(function (x, col) { return territories.push({ id: tid++, row: row, col: col, x: x, y: rowYs[row], factory: row === 3 && col === 3, home: false }); }); });
+var cellId = function (row, col) { var _a; return (_a = territories.find(function (t) { return !t.home && t.row === row && t.col === col; })) === null || _a === void 0 ? void 0 : _a.id; };
 // Home-base markers are visually aligned to the printed faction medallions on the
 // board. Keep these coordinates separate from adjacent/start hex data:
 // changing a marker position must never change movement or setup rules.
-const factionData = {
+var factionData = {
     // The visual marker position is calculated from the two starting hexes below.
     // No faction has a hand-tuned top/left coordinate anymore.
     green: { name: 'Albion', color: '#6f8d35', adjacent: [[0, 0], [0, 1]] },
@@ -211,11 +285,11 @@ const factionData = {
 };
 function factionColorForOwner(owner) {
     var _a;
-    const selectId = owner === 'human' ? '#humanFaction' : '#automaFaction';
+    var selectId = owner === 'human' ? '#humanFaction' : '#automaFaction';
     return ((_a = factionData[$(selectId).value]) === null || _a === void 0 ? void 0 : _a.color) || '#ffffff';
 }
 function syncFactionColors() {
-    const root = document.documentElement;
+    var root = document.documentElement;
     root.style.setProperty('--human', factionColorForOwner('human'));
     root.style.setProperty('--automa', factionColorForOwner('automa'));
 }
@@ -224,125 +298,226 @@ function syncFactionColors() {
 // two common neighbouring hex slots: one is inside the board and one is the
 // missing slot outside the board. The outside slot is therefore the correct home
 // direction for every faction, independent of where the faction sits on the map.
-const HOME_RADIUS = 39, HOME_GAP = 10;
-const baseBoardTerritories = territories.slice();
-const boardCenter = {
-    x: baseBoardTerritories.reduce((n, t) => n + t.x, 0) / baseBoardTerritories.length,
-    y: baseBoardTerritories.reduce((n, t) => n + t.y, 0) / baseBoardTerritories.length
+var HOME_RADIUS = 39, HOME_GAP = 10;
+var baseBoardTerritories = territories.slice();
+var boardCenter = {
+    x: baseBoardTerritories.reduce(function (n, t) { return n + t.x; }, 0) / baseBoardTerritories.length,
+    y: baseBoardTerritories.reduce(function (n, t) { return n + t.y; }, 0) / baseBoardTerritories.length
 };
-const HEX_NEIGHBOUR_OFFSETS = [
+var HEX_NEIGHBOUR_OFFSETS = [
     [91, 0], [-91, 0], [45.5, 78], [-45.5, 78], [45.5, -78], [-45.5, -78]
 ];
-function hexVertices(t, r = 52) { return Array.from({ length: 6 }, (_, i) => { const a = (-30 + i * 60) * Math.PI / 180; return { x: t.x + r * Math.cos(a), y: t.y + r * Math.sin(a) }; }); }
+function hexVertices(t, r) {
+    if (r === void 0) { r = 52; }
+    return Array.from({ length: 6 }, function (_, i) { var a = (-30 + i * 60) * Math.PI / 180; return { x: t.x + r * Math.cos(a), y: t.y + r * Math.sin(a) }; });
+}
 function pointSegmentDistance(p, a, b) {
-    const vx = b.x - a.x, vy = b.y - a.y, wx = p.x - a.x, wy = p.y - a.y;
-    const vv = vx * vx + vy * vy;
-    const u = vv ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / vv)) : 0;
+    var vx = b.x - a.x, vy = b.y - a.y, wx = p.x - a.x, wy = p.y - a.y;
+    var vv = vx * vx + vy * vy;
+    var u = vv ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / vv)) : 0;
     return Math.hypot(p.x - (a.x + u * vx), p.y - (a.y + u * vy));
 }
-function samePoint(a, b, tolerance = 2) { return Math.hypot(a.x - b.x, a.y - b.y) <= tolerance; }
-function neighbourSlots(t) { return HEX_NEIGHBOUR_OFFSETS.map(([dx, dy]) => ({ x: t.x + dx, y: t.y + dy })); }
-function occupiedSlot(p) { return baseBoardTerritories.some(t => samePoint(p, t, 2.5)); }
+function samePoint(a, b, tolerance) {
+    if (tolerance === void 0) { tolerance = 2; }
+    return Math.hypot(a.x - b.x, a.y - b.y) <= tolerance;
+}
+function neighbourSlots(t) { return HEX_NEIGHBOUR_OFFSETS.map(function (_c) {
+    var _d = __read(_c, 2), dx = _d[0], dy = _d[1];
+    return ({ x: t.x + dx, y: t.y + dy });
+}); }
+function occupiedSlot(p) { return baseBoardTerritories.some(function (t) { return samePoint(p, t, 2.5); }); }
 function calculateHomePosition(f) {
-    const ids = f.adjacent.map(([r, c]) => cellId(r, c)).filter(x => x != null);
-    const a = territories[ids[0]], b = territories[ids[1]];
-    const common = neighbourSlots(a).filter(pa => neighbourSlots(b).some(pb => samePoint(pa, pb, 2.5)));
-    const outside = common.filter(p => !occupiedSlot(p));
-    let slot = (outside.length ? outside : common).sort((p, q) => Math.hypot(q.x - boardCenter.x, q.y - boardCenter.y) - Math.hypot(p.x - boardCenter.x, p.y - boardCenter.y))[0];
+    var ids = f.adjacent.map(function (_c) {
+        var _d = __read(_c, 2), r = _d[0], c = _d[1];
+        return cellId(r, c);
+    }).filter(function (x) { return x != null; });
+    var a = territories[ids[0]], b = territories[ids[1]];
+    var common = neighbourSlots(a).filter(function (pa) { return neighbourSlots(b).some(function (pb) { return samePoint(pa, pb, 2.5); }); });
+    var outside = common.filter(function (p) { return !occupiedSlot(p); });
+    var slot = (outside.length ? outside : common).sort(function (p, q) { return Math.hypot(q.x - boardCenter.x, q.y - boardCenter.y) - Math.hypot(p.x - boardCenter.x, p.y - boardCenter.y); })[0];
     if (!slot) {
         // Defensive fallback only; normal faction data always resolves to a missing common slot.
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        let dx = mid.x - boardCenter.x, dy = mid.y - boardCenter.y;
-        const len = Math.hypot(dx, dy) || 1;
-        slot = { x: mid.x + dx / len * 91, y: mid.y + dy / len * 91 };
+        var mid_1 = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        var dx_1 = mid_1.x - boardCenter.x, dy_1 = mid_1.y - boardCenter.y;
+        var len_1 = Math.hypot(dx_1, dy_1) || 1;
+        slot = { x: mid_1.x + dx_1 / len_1 * 91, y: mid_1.y + dy_1 / len_1 * 91 };
     }
     // A normal missing hex centre leaves ~6.5px between the 39px circle and the
     // neighbouring hex edges. Push only along the local outward normal until the
     // requested HOME_GAP is reached. Both touching edges remain equally spaced.
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    let dx = slot.x - mid.x, dy = slot.y - mid.y;
-    const len = Math.hypot(dx, dy) || 1;
+    var mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    var dx = slot.x - mid.x, dy = slot.y - mid.y;
+    var len = Math.hypot(dx, dy) || 1;
     dx /= len;
     dy /= len;
-    const edges = [a, b].flatMap(t => { const v = hexVertices(t); return v.map((p, i) => [p, v[(i + 1) % 6]]); });
-    const clearance = p => Math.min(...edges.map(([e1, e2]) => pointSegmentDistance(p, e1, e2))) - HOME_RADIUS;
-    let shift = 0;
+    var edges = [a, b].flatMap(function (t) { var v = hexVertices(t); return v.map(function (p, i) { return [p, v[(i + 1) % 6]]; }); });
+    var clearance = function (p) { return Math.min.apply(Math, __spreadArray([], __read(edges.map(function (_c) {
+        var _d = __read(_c, 2), e1 = _d[0], e2 = _d[1];
+        return pointSegmentDistance(p, e1, e2);
+    })), false)) - HOME_RADIUS; };
+    var shift = 0;
     while (clearance({ x: slot.x + dx * shift, y: slot.y + dy * shift }) < HOME_GAP && shift < 30)
         shift += 0.25;
     return { x: slot.x + dx * shift, y: slot.y + dy * shift };
 }
-for (const [key, f] of Object.entries(factionData)) {
-    f.adjacentIds = f.adjacent.map(([r, c]) => cellId(r, c)).filter(x => x != null);
-    f.home = calculateHomePosition(f);
-    const id = territories.length;
-    f.homeId = id;
-    territories.push({ id, x: f.home.x, y: f.home.y, home: true, faction: key, factory: false, row: 99, col: 99 });
+try {
+    for (var _m = __values(Object.entries(factionData)), _o = _m.next(); !_o.done; _o = _m.next()) {
+        var _p = __read(_o.value, 2), key = _p[0], f = _p[1];
+        f.adjacentIds = f.adjacent.map(function (_c) {
+            var _d = __read(_c, 2), r = _d[0], c = _d[1];
+            return cellId(r, c);
+        }).filter(function (x) { return x != null; });
+        f.home = calculateHomePosition(f);
+        var id = territories.length;
+        f.homeId = id;
+        territories.push({ id: id, x: f.home.x, y: f.home.y, home: true, faction: key, factory: false, row: 99, col: 99 });
+    }
 }
-const graph = Object.fromEntries(territories.map(t => [t.id, []]));
-const boardTerritories = territories.filter(t => !t.home);
+catch (e_1_1) { e_1 = { error: e_1_1 }; }
+finally {
+    try {
+        if (_o && !_o.done && (_c = _m.return)) _c.call(_m);
+    }
+    finally { if (e_1) throw e_1.error; }
+}
+var graph = Object.fromEntries(territories.map(function (t) { return [t.id, []]; }));
+var boardTerritories = territories.filter(function (t) { return !t.home; });
 // Water topology traced from the supplied Board Game Arena reference.
 // Lake territories are impassable until Riverwalk; riverEdges are boundaries that cannot be crossed before Riverwalk.
-const lakeIds = new Set([6, 8, 16, 21, 30, 32, 41]);
-const riverEdges = [
+var lakeIds = new Set([6, 8, 16, 21, 30, 32, 41]);
+var riverEdges = [
     [2, 9], [3, 4], [3, 9], [4, 5], [4, 11], [7, 13], [9, 10], [10, 11], [12, 18], [13, 14], [14, 20], [17, 18],
     [19, 26], [19, 27], [20, 27], [20, 28], [23, 24], [24, 31], [26, 33], [34, 35], [35, 42], [36, 42], [36, 43], [43, 44]
 ];
-const riverKey = (a, b) => a < b ? `${a}:${b}` : `${b}:${a}`;
-let riverSet = new Set(riverEdges.map(([a, b]) => riverKey(a, b)));
-const hasRiverBetween = (a, b) => riverSet.has(riverKey(a, b));
-const riversUnlocked = () => game.tracker - 1 >= game.profile.rivers;
-for (let i = 0; i < boardTerritories.length; i++)
-    for (let j = i + 1; j < boardTerritories.length; j++) {
-        const a = boardTerritories[i], b = boardTerritories[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+var riverKey = function (a, b) { return a < b ? "".concat(a, ":").concat(b) : "".concat(b, ":").concat(a); };
+var riverSet = new Set(riverEdges.map(function (_c) {
+    var _d = __read(_c, 2), a = _d[0], b = _d[1];
+    return riverKey(a, b);
+}));
+var hasRiverBetween = function (a, b) { return riverSet.has(riverKey(a, b)); };
+var riversUnlocked = function () { return game.tracker >= game.profile.rivers; };
+for (var i = 0; i < boardTerritories.length; i++)
+    for (var j = i + 1; j < boardTerritories.length; j++) {
+        var a = boardTerritories[i], b = boardTerritories[j], d = Math.hypot(a.x - b.x, a.y - b.y);
         if (d > 84 && d < 98) {
             graph[a.id].push(b.id);
             graph[b.id].push(a.id);
         }
     }
-for (const f of Object.values(factionData))
-    for (const id of f.adjacentIds) {
-        graph[f.homeId].push(id);
-        graph[id].push(f.homeId);
+try {
+    for (var _q = __values(Object.values(factionData)), _r = _q.next(); !_r.done; _r = _q.next()) {
+        var f = _r.value;
+        try {
+            for (var _s = (e_3 = void 0, __values(f.adjacentIds)), _t = _s.next(); !_t.done; _t = _s.next()) {
+                var id = _t.value;
+                graph[f.homeId].push(id);
+                graph[id].push(f.homeId);
+            }
+        }
+        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+        finally {
+            try {
+                if (_t && !_t.done && (_e = _s.return)) _e.call(_s);
+            }
+            finally { if (e_3) throw e_3.error; }
+        }
     }
-// Every faction starts on a fixed three-territory peninsula. The two territories
-// touching the home base share exactly one common board neighbour; together those
-// three hexes are the faction's complete pre-Riverwalk movement area.
-for (const f of Object.values(factionData)) {
-    const [a, b] = f.adjacentIds;
-    const common = (graph[a] || []).find(id => { var _a; return id !== f.homeId && !((_a = territories[id]) === null || _a === void 0 ? void 0 : _a.home) && (graph[b] || []).includes(id); });
-    f.peninsulaIds = [...f.adjacentIds, ...(common == null ? [] : [common])];
+}
+catch (e_2_1) { e_2 = { error: e_2_1 }; }
+finally {
+    try {
+        if (_r && !_r.done && (_d = _q.return)) _d.call(_q);
+    }
+    finally { if (e_2) throw e_2.error; }
+}
+var _loop_1 = function (f) {
+    var _3 = __read(f.adjacentIds, 2), a = _3[0], b = _3[1];
+    var common = (graph[a] || []).find(function (id) { var _a; return id !== f.homeId && !((_a = territories[id]) === null || _a === void 0 ? void 0 : _a.home) && (graph[b] || []).includes(id); });
+    f.peninsulaIds = __spreadArray(__spreadArray([], __read(f.adjacentIds), false), __read((common == null ? [] : [common])), false);
+};
+try {
+    // Every faction starts on a fixed three-territory peninsula. The two territories
+    // touching the home base share exactly one common board neighbour; together those
+    // three hexes are the faction's complete pre-Riverwalk movement area.
+    for (var _u = __values(Object.values(factionData)), _v = _u.next(); !_v.done; _v = _u.next()) {
+        var f = _v.value;
+        _loop_1(f);
+    }
+}
+catch (e_4_1) { e_4 = { error: e_4_1 }; }
+finally {
+    try {
+        if (_v && !_v.done && (_f = _u.return)) _f.call(_u);
+    }
+    finally { if (e_4) throw e_4.error; }
 }
 // A starting peninsula is isolated from the rest of the map by water. Add every
 // board edge leaving one of these three-hex regions as a river boundary. This also
 // makes the visible water overlay agree with the movement model.
-const riverKeys = new Set(riverEdges.map(([a, b]) => riverKey(a, b)));
-for (const [factionKey, f] of Object.entries(factionData)) {
-    if (factionKey === 'purple')
-        continue; // Togawa is not enclosed by a river ring on the supplied board.
-    const peninsula = new Set(f.peninsulaIds);
-    for (const a of peninsula) {
-        for (const b of graph[a] || []) {
-            if (((_a = territories[b]) === null || _a === void 0 ? void 0 : _a.home) || peninsula.has(b))
-                continue;
-            const key = riverKey(a, b);
-            if (!riverKeys.has(key)) {
-                riverKeys.add(key);
-                riverEdges.push([a, b]);
+var riverKeys = new Set(riverEdges.map(function (_c) {
+    var _d = __read(_c, 2), a = _d[0], b = _d[1];
+    return riverKey(a, b);
+}));
+try {
+    for (var _w = __values(Object.entries(factionData)), _x = _w.next(); !_x.done; _x = _w.next()) {
+        var _y = __read(_x.value, 2), factionKey = _y[0], f = _y[1];
+        if (factionKey === 'purple')
+            continue; // Togawa is not enclosed by a river ring on the supplied board.
+        var peninsula = new Set(f.peninsulaIds);
+        try {
+            for (var peninsula_1 = (e_6 = void 0, __values(peninsula)), peninsula_1_1 = peninsula_1.next(); !peninsula_1_1.done; peninsula_1_1 = peninsula_1.next()) {
+                var a = peninsula_1_1.value;
+                try {
+                    for (var _z = (e_7 = void 0, __values(graph[a] || [])), _0 = _z.next(); !_0.done; _0 = _z.next()) {
+                        var b = _0.value;
+                        if (((_a = territories[b]) === null || _a === void 0 ? void 0 : _a.home) || peninsula.has(b))
+                            continue;
+                        var key = riverKey(a, b);
+                        if (!riverKeys.has(key)) {
+                            riverKeys.add(key);
+                            riverEdges.push([a, b]);
+                        }
+                    }
+                }
+                catch (e_7_1) { e_7 = { error: e_7_1 }; }
+                finally {
+                    try {
+                        if (_0 && !_0.done && (_j = _z.return)) _j.call(_z);
+                    }
+                    finally { if (e_7) throw e_7.error; }
+                }
             }
+        }
+        catch (e_6_1) { e_6 = { error: e_6_1 }; }
+        finally {
+            try {
+                if (peninsula_1_1 && !peninsula_1_1.done && (_h = peninsula_1.return)) _h.call(peninsula_1);
+            }
+            finally { if (e_6) throw e_6.error; }
         }
     }
 }
+catch (e_5_1) { e_5 = { error: e_5_1 }; }
+finally {
+    try {
+        if (_x && !_x.done && (_g = _w.return)) _g.call(_w);
+    }
+    finally { if (e_5) throw e_5.error; }
+}
 // Manual water-edge corrections traced against the supplied BGA board reference.
 // Hex numbers below are 1-based, matching the labels shown in the UI.
-const removeRiver = (hexA, hexB) => {
-    const key = riverKey(hexA - 1, hexB - 1);
-    for (let i = riverEdges.length - 1; i >= 0; i--)
+var removeRiver = function (hexA, hexB) {
+    var key = riverKey(hexA - 1, hexB - 1);
+    for (var i = riverEdges.length - 1; i >= 0; i--)
         if (riverKey(riverEdges[i][0], riverEdges[i][1]) === key)
             riverEdges.splice(i, 1);
 };
-const addRiver = (hexA, hexB) => {
-    const a = hexA - 1, b = hexB - 1, key = riverKey(a, b);
-    if (!riverEdges.some(([x, y]) => riverKey(x, y) === key))
+var addRiver = function (hexA, hexB) {
+    var a = hexA - 1, b = hexB - 1, key = riverKey(a, b);
+    if (!riverEdges.some(function (_c) {
+        var _d = __read(_c, 2), x = _d[0], y = _d[1];
+        return riverKey(x, y) === key;
+    }))
         riverEdges.push([a, b]);
 };
 // Hex 3: move the left-hand river from the straight-left edge to the lower-left edge.
@@ -367,48 +542,94 @@ removeRiver(39, 45);
 removeRiver(39, 38);
 addRiver(32, 33);
 removeRiver(46, 45); // Hex 46: no water on the left edge.
-// Every lake is bordered by water on each side that touches a normal land territory.
-// This is both a visual rule and part of the pre-Riverwalk movement topology.
-for (const lakeId of lakeIds) {
-    for (const neighbourId of graph[lakeId] || []) {
-        if (((_b = territories[neighbourId]) === null || _b === void 0 ? void 0 : _b.home) || lakeIds.has(neighbourId))
-            continue;
-        const key = riverKey(lakeId, neighbourId);
-        if (!riverEdges.some(([a, b]) => riverKey(a, b) === key))
-            riverEdges.push([lakeId, neighbourId]);
+try {
+    // Every lake is bordered by water on each side that touches a normal land territory.
+    // This is both a visual rule and part of the pre-Riverwalk movement topology.
+    for (var lakeIds_1 = __values(lakeIds), lakeIds_1_1 = lakeIds_1.next(); !lakeIds_1_1.done; lakeIds_1_1 = lakeIds_1.next()) {
+        var lakeId = lakeIds_1_1.value;
+        var _loop_2 = function (neighbourId) {
+            if (((_b = territories[neighbourId]) === null || _b === void 0 ? void 0 : _b.home) || lakeIds.has(neighbourId))
+                return "continue";
+            var key = riverKey(lakeId, neighbourId);
+            if (!riverEdges.some(function (_c) {
+                var _d = __read(_c, 2), a = _d[0], b = _d[1];
+                return riverKey(a, b) === key;
+            }))
+                riverEdges.push([lakeId, neighbourId]);
+        };
+        try {
+            for (var _1 = (e_9 = void 0, __values(graph[lakeId] || [])), _2 = _1.next(); !_2.done; _2 = _1.next()) {
+                var neighbourId = _2.value;
+                _loop_2(neighbourId);
+            }
+        }
+        catch (e_9_1) { e_9 = { error: e_9_1 }; }
+        finally {
+            try {
+                if (_2 && !_2.done && (_l = _1.return)) _l.call(_1);
+            }
+            finally { if (e_9) throw e_9.error; }
+        }
     }
+}
+catch (e_8_1) { e_8 = { error: e_8_1 }; }
+finally {
+    try {
+        if (lakeIds_1_1 && !lakeIds_1_1.done && (_k = lakeIds_1.return)) _k.call(lakeIds_1);
+    }
+    finally { if (e_8) throw e_8.error; }
 }
 // Some river/coast edges sit on the outside of the playable hex field and therefore
 // have no neighbouring hex to pair with. Keep those as visual edge markers.
-const extraRiverSides = [
+var extraRiverSides = [
     { hex: 13, side: 'LR' }
     // Hex 45 right-bottom intentionally has no water marker.
 ];
-riverSet = new Set(riverEdges.map(([a, b]) => riverKey(a, b)));
-const factoryId = boardTerritories.find(t => t.factory).id;
-const DEFAULT_ENCOUNTER_IDS = [2, 7, 10, 12, 20, 24, 26, 34, 35, 38, 46];
-let units = [], markers = { encounter: new Set(DEFAULT_ENCOUNTER_IDS), resources: {} };
-const at = t => units.filter(u => u.territory === t), neigh = t => new Set([t, ...graph[t]]);
-const isCombatUnit = u => u && (u.type === 'mech' || u.type === 'character');
-function bfs(start) { const d = { [start]: 0 }, q = [start]; while (q.length) {
-    const x = q.shift();
-    for (const n of graph[x])
-        if (d[n] === undefined) {
-            d[n] = d[x] + 1;
-            q.push(n);
+riverSet = new Set(riverEdges.map(function (_c) {
+    var _d = __read(_c, 2), a = _d[0], b = _d[1];
+    return riverKey(a, b);
+}));
+var factoryId = boardTerritories.find(function (t) { return t.factory; }).id;
+var DEFAULT_ENCOUNTER_IDS = [2, 7, 10, 12, 20, 24, 26, 34, 35, 38, 46];
+var units = [], markers = { encounter: new Set(DEFAULT_ENCOUNTER_IDS), resources: {} };
+var at = function (t) { return units.filter(function (u) { return u.territory === t; }); }, neigh = function (t) { return new Set(__spreadArray([t], __read(graph[t]), false)); };
+var isCombatUnit = function (u) { return u && (u.type === 'mech' || u.type === 'character'); };
+function bfs(start) {
+    var _c, e_10, _d;
+    var d = (_c = {}, _c[start] = 0, _c), q = [start];
+    while (q.length) {
+        var x = q.shift();
+        try {
+            for (var _e = (e_10 = void 0, __values(graph[x])), _f = _e.next(); !_f.done; _f = _e.next()) {
+                var n = _f.value;
+                if (d[n] === undefined) {
+                    d[n] = d[x] + 1;
+                    q.push(n);
+                }
+            }
         }
-} return d; }
-const fd = bfs(factoryId);
-const reading = (a, b) => territories[a].y - territories[b].y || territories[a].x - territories[b].x;
-const homeId = owner => factionData[$(owner === 'automa' ? '#automaFaction' : '#humanFaction').value].homeId;
-function homePeninsula(owner = 'automa') {
-    const f = factionData[$(owner === 'automa' ? '#automaFaction' : '#humanFaction').value];
+        catch (e_10_1) { e_10 = { error: e_10_1 }; }
+        finally {
+            try {
+                if (_f && !_f.done && (_d = _e.return)) _d.call(_e);
+            }
+            finally { if (e_10) throw e_10.error; }
+        }
+    }
+    return d;
+}
+var fd = bfs(factoryId);
+var reading = function (a, b) { return territories[a].y - territories[b].y || territories[a].x - territories[b].x; };
+var homeId = function (owner) { return factionData[$(owner === 'automa' ? '#automaFaction' : '#humanFaction').value].homeId; };
+function homePeninsula(owner) {
+    if (owner === void 0) { owner = 'automa'; }
+    var f = factionData[$(owner === 'automa' ? '#automaFaction' : '#humanFaction').value];
     return new Set(f.peninsulaIds);
 }
 function movementNeighbors(id) {
     if (riversUnlocked())
-        return (graph[id] || []).filter(n => { var _a; return !((_a = territories[n]) === null || _a === void 0 ? void 0 : _a.home); });
-    return (graph[id] || []).filter(n => {
+        return (graph[id] || []).filter(function (n) { var _a; return !((_a = territories[n]) === null || _a === void 0 ? void 0 : _a.home); });
+    return (graph[id] || []).filter(function (n) {
         var _a;
         return !((_a = territories[n]) === null || _a === void 0 ? void 0 : _a.home) &&
             !lakeIds.has(n) &&
@@ -428,36 +649,66 @@ function legalAutomaDestination(id) {
 // its two adjacent starting territories. Before the water unlock, unit neighborhoods
 // follow only actual land edges; rivers and lakes block them. This lets Togawa expand
 // over its open land connection instead of being artificially trapped in three hexes.
-function automaArea(includeHomeBase = true) {
-    const s = new Set();
+function automaArea(includeHomeBase) {
+    var e_11, _c, e_12, _d;
+    if (includeHomeBase === void 0) { includeHomeBase = true; }
+    var s = new Set();
     if (includeHomeBase)
-        graph[homeId('automa')].forEach(n => { if (legalAutomaDestination(n))
-            s.add(n); });
-    for (const u of units.filter(x => x.owner === 'automa' && !territories[x.territory].home)) {
-        s.add(u.territory);
-        for (const n of movementNeighbors(u.territory))
+        graph[homeId('automa')].forEach(function (n) {
             if (legalAutomaDestination(n))
                 s.add(n);
+        });
+    try {
+        for (var _e = __values(units.filter(function (x) { return x.owner === 'automa' && !territories[x.territory].home; })), _f = _e.next(); !_f.done; _f = _e.next()) {
+            var u = _f.value;
+            s.add(u.territory);
+            try {
+                for (var _g = (e_12 = void 0, __values(movementNeighbors(u.territory))), _h = _g.next(); !_h.done; _h = _g.next()) {
+                    var n = _h.value;
+                    if (legalAutomaDestination(n))
+                        s.add(n);
+                }
+            }
+            catch (e_12_1) { e_12 = { error: e_12_1 }; }
+            finally {
+                try {
+                    if (_h && !_h.done && (_d = _g.return)) _d.call(_g);
+                }
+                finally { if (e_12) throw e_12.error; }
+            }
+        }
+    }
+    catch (e_11_1) { e_11 = { error: e_11_1 }; }
+    finally {
+        try {
+            if (_f && !_f.done && (_c = _e.return)) _c.call(_e);
+        }
+        finally { if (e_11) throw e_11.error; }
     }
     return s;
 }
 function enemyCombatTerritories() {
-    const onBoard = units.filter(u => u.owner === 'human' && isCombatUnit(u) && !territories[u.territory].home).map(u => u.territory);
+    var onBoard = units.filter(function (u) { return u.owner === 'human' && isCombatUnit(u) && !territories[u.territory].home; }).map(function (u) { return u.territory; });
     if (onBoard.length)
         return onBoard;
-    return units.filter(u => u.owner === 'human' && isCombatUnit(u)).map(u => u.territory);
+    return units.filter(function (u) { return u.owner === 'human' && isCombatUnit(u); }).map(function (u) { return u.territory; });
 }
-function enemyCombatDistance(t) { const ts = enemyCombatTerritories(); if (!ts.length)
-    return 99; const d = bfs(t); return Math.min(...ts.map(x => { var _a; return (_a = d[x]) !== null && _a !== void 0 ? _a : 99; })); }
+function enemyCombatDistance(t) {
+    var ts = enemyCombatTerritories();
+    if (!ts.length)
+        return 99;
+    var d = bfs(t);
+    return Math.min.apply(Math, __spreadArray([], __read(ts.map(function (x) { var _a; return (_a = d[x]) !== null && _a !== void 0 ? _a : 99; })), false));
+}
 function closestUnit(type) {
-    const hd = bfs(homeId('automa'));
-    return units.filter(u => u.owner === 'automa' && (!type || u.type === type)).sort((a, b) => { var _a, _b; return ((_a = hd[a.territory]) !== null && _a !== void 0 ? _a : 99) - ((_b = hd[b.territory]) !== null && _b !== void 0 ? _b : 99) || reading(a.territory, b.territory) || a.id - b.id; })[0];
+    var hd = bfs(homeId('automa'));
+    return units.filter(function (u) { return u.owner === 'automa' && (!type || u.type === type); }).sort(function (a, b) { var _a, _b; return ((_a = hd[a.territory]) !== null && _a !== void 0 ? _a : 99) - ((_b = hd[b.territory]) !== null && _b !== void 0 ? _b : 99) || reading(a.territory, b.territory) || a.id - b.id; })[0];
 }
 function closestCombat() {
-    const hd = bfs(homeId('automa'));
-    return units.filter(u => u.owner === 'automa' && isCombatUnit(u)).sort((a, b) => {
+    var hd = bfs(homeId('automa'));
+    return units.filter(function (u) { return u.owner === 'automa' && isCombatUnit(u); }).sort(function (a, b) {
         var _a, _b;
-        const da = (_a = hd[a.territory]) !== null && _a !== void 0 ? _a : 99, db = (_b = hd[b.territory]) !== null && _b !== void 0 ? _b : 99;
+        var da = (_a = hd[a.territory]) !== null && _a !== void 0 ? _a : 99, db = (_b = hd[b.territory]) !== null && _b !== void 0 ? _b : 99;
         if (da !== db)
             return da - db;
         // Explicit Automa tiebreaker: character wins when character + mech are both on home base.
@@ -468,139 +719,153 @@ function closestCombat() {
 }
 function canReachInOneStep(from, to) { return from === to || movementNeighbors(from).includes(to); }
 function neighborhoodCount(t, selected) {
-    return units.filter(u => u.owner === 'automa' && u.id !== selected.id && !territories[u.territory].home && canReachInOneStep(u.territory, t)).length;
+    return units.filter(function (u) { return u.owner === 'automa' && u.id !== selected.id && !territories[u.territory].home && canReachInOneStep(u.territory, t); }).length;
 }
 function isInEnemyCombatNeighborhood(t) {
-    return units.some(u => u.owner === 'human' && isCombatUnit(u) && !territories[u.territory].home && canReachInOneStep(u.territory, t));
+    return units.some(function (u) { return u.owner === 'human' && isCombatUnit(u) && !territories[u.territory].home && canReachInOneStep(u.territory, t); });
 }
 function workerMove() {
-    const unit = closestUnit('worker');
+    var unit = closestUnit('worker');
     if (!unit)
         return null;
-    let v = [...automaArea(true)].filter(t => legalAutomaDestination(t) &&
-        !at(t).some(u => u.owner === 'human') &&
-        !at(t).some(u => u.owner === 'automa' && u.type === 'worker' && u.id !== unit.id) &&
-        !isInEnemyCombatNeighborhood(t));
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) &&
+        !at(t).some(function (u) { return u.owner === 'human'; }) &&
+        !isInEnemyCombatNeighborhood(t); });
     if (!v.length)
         return null;
-    v.sort((a, b) => neighborhoodCount(b, unit) - neighborhoodCount(a, unit) || fd[a] - fd[b] || reading(a, b));
-    return { unit, to: v[0], label: 'Move worker' };
+    v.sort(function (a, b) { return neighborhoodCount(b, unit) - neighborhoodCount(a, unit) || fd[a] - fd[b] || reading(a, b); });
+    return { unit: unit, to: v[0], label: 'Move worker' };
 }
 function nonAttack(type) {
-    const unit = closestUnit(type);
+    var unit = closestUnit(type);
     if (!unit)
         return null;
-    let v = [...automaArea(true)].filter(t => legalAutomaDestination(t) &&
-        !at(t).some(u => u.owner === 'human') &&
-        !at(t).some(u => u.owner === 'automa' && isCombatUnit(u) && u.id !== unit.id));
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) &&
+        !at(t).some(function (u) { return u.owner === 'human'; }); });
     if (!v.length)
         return null;
-    v.sort((a, b) => enemyCombatDistance(a) - enemyCombatDistance(b) || fd[a] - fd[b] || reading(a, b));
-    return { unit, to: v[0], label: `Move ${type}` };
+    v.sort(function (a, b) { return enemyCombatDistance(a) - enemyCombatDistance(b) || fd[a] - fd[b] || reading(a, b); });
+    return { unit: unit, to: v[0], label: "Move ".concat(type) };
 }
 function encounterFactory() {
-    const unit = closestUnit('character');
+    var unit = closestUnit('character');
     if (!unit)
         return null;
     // Encounter/Factory only uses neighborhoods of Automa units, not the home-base neighborhood.
-    let v = [...automaArea(false)].filter(t => legalAutomaDestination(t) && (markers.encounter.has(t) || (territories[t].factory && !game.factoryCard)) && !at(t).some(u => u.owner === 'human') && !at(t).some(u => u.owner === 'automa' && u.type === 'mech'));
+    var v = __spreadArray([], __read(automaArea(false)), false).filter(function (t) { return legalAutomaDestination(t) && (markers.encounter.has(t) || (territories[t].factory && !game.factoryCard)) && !at(t).some(function (u) { return u.owner === 'human'; }) && !at(t).some(function (u) { return u.owner === 'automa' && u.type === 'mech'; }); });
     if (!v.length)
         return null;
-    v.sort((a, b) => fd[a] - fd[b] || reading(a, b));
-    return { unit, to: v[0], label: 'Factory / Encounter' };
+    v.sort(function (a, b) { return fd[a] - fd[b] || reading(a, b); });
+    return { unit: unit, to: v[0], label: 'Factory / Encounter' };
 }
-function attackCombat(minPower = 0) {
+function attackCombat(minPower) {
+    if (minPower === void 0) { minPower = 0; }
     if (+(document.querySelector('#power').value) < minPower)
         return null;
-    const unit = closestCombat();
+    var unit = closestCombat();
     if (!unit)
         return null;
-    let v = [...automaArea(true)].filter(t => legalAutomaDestination(t) && at(t).some(u => u.owner === 'human' && isCombatUnit(u)));
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) && at(t).some(function (u) { return u.owner === 'human' && isCombatUnit(u); }); });
     if (!v.length)
         return null;
-    v.sort((a, b) => at(a).filter(u => u.owner === 'human' && isCombatUnit(u)).length - at(b).filter(u => u.owner === 'human' && isCombatUnit(u)).length || fd[a] - fd[b] || reading(a, b));
-    return { unit, to: v[0], label: `Attack combat${minPower ? ` · ${minPower}+ power` : ''}`, attack: true };
+    v.sort(function (a, b) { return at(a).filter(function (u) { return u.owner === 'human' && isCombatUnit(u); }).length - at(b).filter(function (u) { return u.owner === 'human' && isCombatUnit(u); }).length || fd[a] - fd[b] || reading(a, b); });
+    return { unit: unit, to: v[0], label: "Attack combat".concat(minPower ? " \u00B7 ".concat(minPower, "+ power") : ''), attack: true };
 }
 function attackWorker() {
-    const unit = closestCombat();
+    var unit = closestCombat();
     if (!unit)
         return null;
-    let v = [...automaArea(true)].filter(t => legalAutomaDestination(t) && at(t).some(u => u.owner === 'human' && u.type === 'worker') && !at(t).some(u => u.owner === 'human' && isCombatUnit(u)));
+    var v = __spreadArray([], __read(automaArea(true)), false).filter(function (t) { return legalAutomaDestination(t) && at(t).some(function (u) { return u.owner === 'human' && u.type === 'worker'; }) && !at(t).some(function (u) { return u.owner === 'human' && isCombatUnit(u); }); });
     if (!v.length)
         return null;
-    v.sort((a, b) => (markers.resources[b] || 0) - (markers.resources[a] || 0) || fd[a] - fd[b] || reading(a, b));
-    return { unit, to: v[0], label: 'Attack worker', attackWorker: true, after: () => {
-            const retreated = units.filter(u => u.owner === 'human' && u.type === 'worker' && u.territory === v[0]);
-            retreated.forEach(u => u.territory = homeId('human'));
+    v.sort(function (a, b) { return (markers.resources[b] || 0) - (markers.resources[a] || 0) || fd[a] - fd[b] || reading(a, b); });
+    return { unit: unit, to: v[0], label: 'Attack worker', attackWorker: true, after: function () {
+            var retreated = units.filter(function (u) { return u.owner === 'human' && u.type === 'worker' && u.territory === v[0]; });
+            retreated.forEach(function (u) { return u.territory = homeId('human'); });
             markers.resources[v[0]] = 0;
         } };
 }
 function factionMatches(action) { return !action.faction || action.faction === $('#automaFaction').value; }
-function moveFor(action) { if (!factionMatches(action))
-    return null; if (action.t === 'worker')
-    return workerMove(); if (action.t === 'mech')
-    return nonAttack('mech'); if (action.t === 'character')
-    return nonAttack('character'); if (action.t === 'facobj')
-    return encounterFactory(); if (action.t === 'attack' && action.o === 'worker')
-    return attackWorker(); if (action.t === 'attack' && action.o === 'charormech')
-    return attackCombat(action.p || 0); return null; }
-function add(owner, type, territory, doRender = true) { units.push({ id: uid++, owner, type, territory }); if (doRender)
-    render(); }
-function combatUnitsAt(id, owner) { return at(id).filter(u => u.owner === owner && isCombatUnit(u)); }
+function moveFor(action) {
+    if (!factionMatches(action))
+        return null;
+    if (action.t === 'worker')
+        return workerMove();
+    if (action.t === 'mech')
+        return nonAttack('mech');
+    if (action.t === 'character')
+        return nonAttack('character');
+    if (action.t === 'facobj')
+        return encounterFactory();
+    if (action.t === 'attack' && action.o === 'worker')
+        return attackWorker();
+    if (action.t === 'attack' && action.o === 'charormech')
+        return attackCombat(action.p || 0);
+    return null;
+}
+function add(owner, type, territory, doRender) {
+    if (doRender === void 0) { doRender = true; }
+    units.push({ id: uid++, owner: owner, type: type, territory: territory });
+    if (doRender)
+        render();
+}
+function combatUnitsAt(id, owner) { return at(id).filter(function (u) { return u.owner === owner && isCombatUnit(u); }); }
 function hasCombatAt(id) { return combatUnitsAt(id, 'human').length > 0 && combatUnitsAt(id, 'automa').length > 0; }
-function setCombatState(id, card = null, source = 'board') {
+function setCombatState(id, card, source) {
+    if (card === void 0) { card = null; }
+    if (source === void 0) { source = 'board'; }
     if (id == null || !hasCombatAt(id))
         return false;
     game.combatVisible = true;
     game.combatTerritory = id;
     game.combatCardMode = !card;
-    game.activeCombat = { territory: id, card: card || null, source };
+    game.activeCombat = { territory: id, card: card || null, source: source };
     return true;
 }
 function openCombatOverlay() {
-    const c = game.activeCombat;
+    var c = game.activeCombat;
     if (!c)
         return;
     syncFactionColors();
-    const hName = factionData[$('#humanFaction').value].name, aName = factionData[$('#automaFaction').value].name;
-    const hCount = combatUnitsAt(c.territory, 'human').length, aCount = combatUnitsAt(c.territory, 'automa').length;
-    const card = c.card;
-    const p = +$('#power').value;
-    const spend = card ? Math.min(p, card.combat.spend[p <= 7 ? 0 : p <= 13 ? 1 : 2]) : null;
-    const cardsPlayed = card ? Math.min(game.combatCards, card.combat.cards) : null;
-    const cardSection = card ? `<div class="combat-details"><div class="combat-detail"><span class="label">Automa power</span><b>${spend}</b><small>van ${p} beschikbaar</small></div><div class="combat-detail"><span class="label">Combat cards</span><b>${cardsPlayed}</b><small>van ${game.combatCards} beschikbaar</small></div></div>` : `<button class="combat-card-btn" onclick="drawCombatForActiveBattle()"><i class="fa-solid fa-cards-blank"></i> Trek combatkaart voor Automa</button>`;
-    $('#combatTitle').textContent = `Combat · Hex ${c.territory + 1}`;
-    $('#combatOverlayBody').innerHTML = `<div class="combat-vs"><div class="combat-side" style="border-color:${factionColorForOwner('human')}"><strong style="color:${factionColorForOwner('human')}">${hName}</strong><small>${hCount} combat unit${hCount === 1 ? '' : 's'}</small></div><div class="combat-vs-mark"><i class="fa-solid fa-bolt"></i></div><div class="combat-side" style="border-color:${factionColorForOwner('automa')}"><strong style="color:${factionColorForOwner('automa')}">${aName}</strong><small>${aCount} combat unit${aCount === 1 ? '' : 's'}</small></div></div>${cardSection}<div class="combat-note">Leg de gekozen power en combat cards fysiek open en bepaal de winnaar. De helper verwerkt daarna retreat, Automa-power/combatcards en een eventuele combatster automatisch.</div><div class="combat-actions"><button class="combat-action human" onclick="resolveCombat('human')">${hName} wint</button><button class="combat-action automa" onclick="resolveCombat('automa')">${aName} wint</button></div>`;
+    var hName = factionData[$('#humanFaction').value].name, aName = factionData[$('#automaFaction').value].name;
+    var hCount = combatUnitsAt(c.territory, 'human').length, aCount = combatUnitsAt(c.territory, 'automa').length;
+    var card = c.card;
+    var p = +$('#power').value;
+    var spend = card ? Math.min(p, card.combat.spend[p <= 7 ? 0 : p <= 13 ? 1 : 2]) : null;
+    var cardsPlayed = card ? Math.min(game.combatCards, card.combat.cards) : null;
+    var cardSection = card ? "<div class=\"combat-details\"><div class=\"combat-detail\"><span class=\"label\">Automa power</span><b>".concat(spend, "</b><small>van ").concat(p, " beschikbaar</small></div><div class=\"combat-detail\"><span class=\"label\">Combat cards</span><b>").concat(cardsPlayed, "</b><small>van ").concat(game.combatCards, " beschikbaar</small></div></div>") : "<button class=\"combat-card-btn\" onclick=\"drawCombatForActiveBattle()\"><i class=\"fa-solid fa-cards-blank\"></i> Trek combatkaart voor Automa</button>";
+    $('#combatTitle').textContent = "Combat \u00B7 Hex ".concat(c.territory + 1);
+    $('#combatOverlayBody').innerHTML = "<div class=\"combat-vs\"><div class=\"combat-side\" style=\"border-color:".concat(factionColorForOwner('human'), "\"><strong style=\"color:").concat(factionColorForOwner('human'), "\">").concat(hName, "</strong><small>").concat(hCount, " combat unit").concat(hCount === 1 ? '' : 's', "</small></div><div class=\"combat-vs-mark\"><i class=\"fa-solid fa-bolt\"></i></div><div class=\"combat-side\" style=\"border-color:").concat(factionColorForOwner('automa'), "\"><strong style=\"color:").concat(factionColorForOwner('automa'), "\">").concat(aName, "</strong><small>").concat(aCount, " combat unit").concat(aCount === 1 ? '' : 's', "</small></div></div>").concat(cardSection, "<div class=\"combat-note\">Leg de gekozen power en combat cards fysiek open en bepaal de winnaar. De helper verwerkt daarna retreat, Automa-power/combatcards en een eventuele combatster automatisch.</div><div class=\"combat-actions\"><button class=\"combat-action human\" onclick=\"resolveCombat('human')\">").concat(hName, " wint</button><button class=\"combat-action automa\" onclick=\"resolveCombat('automa')\">").concat(aName, " wint</button></div>");
     $('#combatOverlay').classList.remove('hidden');
 }
 function closeCombatOverlay() { $('#combatOverlay').classList.add('hidden'); }
 function drawCombatForActiveBattle() {
     if (!game.activeCombat)
         return;
-    const card = takeCard();
+    var card = takeCard();
     game.activeCombat.card = card;
     game.combatCardMode = true;
     renderCard(card, game.phase, null, false, true);
-    showStatus(`Combatkaart #${card.id + 1} getrokken. De star tracker verandert niet.`);
+    showStatus("Combatkaart #".concat(card.id + 1, " getrokken. De star tracker verandert niet."));
     openCombatOverlay();
     renderAll();
 }
 function resolveCombat(winner) {
-    const c = game.activeCombat;
+    var c = game.activeCombat;
     if (!c)
         return;
-    const loser = winner === 'human' ? 'automa' : 'human', card = c.card;
+    var loser = winner === 'human' ? 'automa' : 'human', card = c.card;
     if (card) {
-        const p = +$('#power').value;
-        const spend = Math.min(p, card.combat.spend[p <= 7 ? 0 : p <= 13 ? 1 : 2]);
+        var p = +$('#power').value;
+        var spend = Math.min(p, card.combat.spend[p <= 7 ? 0 : p <= 13 ? 1 : 2]);
         $('#power').value = Math.max(0, p - spend);
         game.combatCards = Math.max(0, game.combatCards - Math.min(game.combatCards, card.combat.cards));
     }
     // All losing pieces in the contested territory retreat to their faction home base.
-    units.filter(u => u.owner === loser && u.territory === c.territory).forEach(u => u.territory = homeId(loser));
+    units.filter(function (u) { return u.owner === loser && u.territory === c.territory; }).forEach(function (u) { return u.territory = homeId(loser); });
     if (winner === 'automa' && game.combatStars < 2) {
         game.combatStars++;
-        awardStar(`Combat-ster ${game.combatStars}/2`);
+        awardStar("Combat-ster ".concat(game.combatStars, "/2"));
     }
     game.activeCombat = null;
     game.combatVisible = false;
@@ -609,127 +874,167 @@ function resolveCombat(winner) {
     closeCombatOverlay();
     checkPowerStar();
     renderAll();
-    showStatus(`${winner === 'automa' ? factionData[$('#automaFaction').value].name : factionData[$('#humanFaction').value].name} wint combat.`);
+    showStatus("".concat(winner === 'automa' ? factionData[$('#automaFaction').value].name : factionData[$('#humanFaction').value].name, " wint combat."));
 }
+function openFactoryAlert(){ $('#factoryAlert').classList.remove('hidden'); }
+function closeFactoryAlert(){ $('#factoryAlert').classList.add('hidden'); }
 function executeMove(m) {
     var _a;
-    const from = m.unit.territory;
+    var from = m.unit.territory;
     m.unit.territory = m.to;
+    game.lastMovement = { from: from, to: m.to, owner: m.unit.owner, type: m.unit.type };
     (_a = m.after) === null || _a === void 0 ? void 0 : _a.call(m);
-    // For normal difficulties character rewards resolve after its sole Move action.
-    // Ultimaszyna resolves them immediately so a later movement on the same card can move it again.
     if (m.unit.type === 'character') {
-        if (markers.encounter.has(m.to))
-            markers.encounter.delete(m.to);
-        if (territories[m.to].factory && !game.factoryCard)
+        if (markers.encounter.has(m.to)) markers.encounter.delete(m.to);
+        if (territories[m.to].factory && !game.factoryCard) {
             game.factoryCard = true;
+            openFactoryAlert();
+        }
     }
-    if (m.attack)
-        setCombatState(m.to, game.lastCard, 'automa');
-    return Object.assign(Object.assign({}, m), { from });
+    if (m.attack) setCombatState(m.to, game.lastCard, 'automa');
+    return Object.assign(Object.assign({}, m), { from: from });
 }
 function gainOne(a, log) {
     var _a;
     if (!factionMatches(a))
         return;
-    const q = (_a = a.q) !== null && _a !== void 0 ? _a : 1;
+    var q = (_a = a.q) !== null && _a !== void 0 ? _a : 1;
     if (a.t === 'gold') {
-        const bonus = game.profile.t === 'very hard' ? 1 : 0;
+        var bonus = game.profile.t === 'very hard' ? 1 : 0;
         game.coins += q + bonus;
-        log.push(`+${q + bonus} coin${q + bonus === 1 ? '' : 's'}`);
+        log.push("+".concat(q + bonus, " coin").concat(q + bonus === 1 ? '' : 's'));
     }
     if (a.t === 'power') {
-        const bonus = game.profile.t === 'very hard' ? 1 : 0;
-        const gain = q + bonus;
+        var bonus = game.profile.t === 'very hard' ? 1 : 0;
+        var gain = q + bonus;
         $('#power').value = Math.min(16, +$('#power').value + gain);
-        log.push(`+${gain} power`);
+        log.push("+".concat(gain, " power"));
     }
     if (a.t === 'powercard') {
         game.combatCards += q;
-        log.push(`+${q} combat card${q === 1 ? '' : 's'}`);
+        log.push("+".concat(q, " combat card").concat(q === 1 ? '' : 's'));
     }
     if (a.t === 'worker') {
-        let deployed = 0;
-        for (let i = 0; i < q && units.filter(u => u.owner === 'automa' && u.type === 'worker').length < 8; i++) {
+        var deployed = 0;
+        for (var i = 0; i < q && units.filter(function (u) { return u.owner === 'automa' && u.type === 'worker'; }).length < 8; i++) {
             add('automa', 'worker', homeId('automa'), false);
             deployed++;
         }
         if (deployed)
-            log.push(`${deployed} worker${deployed === 1 ? '' : 's'} deployed op home base`);
+            log.push("".concat(deployed, " worker").concat(deployed === 1 ? '' : 's', " deployed op home base"));
     }
     if (a.t === 'charormech') {
-        let deployed = [];
-        for (let i = 0; i < q; i++) {
-            if (!units.some(u => u.owner === 'automa' && u.type === 'character')) {
+        var deployed = [];
+        for (var i = 0; i < q; i++) {
+            if (!units.some(function (u) { return u.owner === 'automa' && u.type === 'character'; })) {
                 add('automa', 'character', homeId('automa'), false);
                 deployed.push('character');
             }
-            else if (units.filter(u => u.owner === 'automa' && u.type === 'mech').length < 4) {
+            else if (units.filter(function (u) { return u.owner === 'automa' && u.type === 'mech'; }).length < 4) {
                 add('automa', 'mech', homeId('automa'), false);
                 deployed.push('mech');
             }
         }
         if (deployed.length)
-            log.push(`${deployed.join(' + ')} deployed op home base`);
+            log.push("".concat(deployed.join(' + '), " deployed op home base"));
     }
 }
-function checkPowerStar() { if (!game.powerStar && +$('#power').value >= 16) {
-    game.powerStar = true;
-    awardStar('Power-ster');
-} }
-function awardStar(reason) { if (game.gameOver)
-    return; game.stars = Math.min(6, game.stars + 1); showStatus(`${reason}: Automa verdient een ster.`); if (game.stars >= 6) {
-    game.gameOver = true;
-    showStatus('Automa heeft 6 sterren. Het spel eindigt.', true);
-} }
-function refillDeck() { game.deck = cards.map(c => c.id); }
-function takeCard() { if (!game.deck.length)
-    refillDeck(); const i = Math.floor(Math.random() * game.deck.length); const id = game.deck.splice(i, 1)[0]; return cards[id]; }
-function advanceTracker(card) { if (!card.star)
-    return; const beforePhase = game.phase; game.tracker = Math.min(game.profile.grid.length - 1, game.tracker + 1); const cell = game.profile.grid[game.tracker]; if (cell === 2) {
-    awardStar(game.phase === 0 ? 'Star tracker / fasegrens' : 'Star tracker');
-    if (beforePhase === 0) {
-        game.phase = 1;
-        refillDeck();
-        showStatus('Fase II bereikt. De volledige Automa-deck is opnieuw geschud; vanaf de volgende beurt geldt Scheme II.');
+function checkPowerStar() {
+    if (!game.powerStar && +$('#power').value >= 16) {
+        game.powerStar = true;
+        awardStar('Power-ster');
     }
-} }
-function draw() {
+}
+function awardStar(reason) {
     if (game.gameOver)
         return;
-    const card = takeCard(), phaseForCard = game.phase, skip = card.skip && game.profile.t === 'easy';
+    game.stars = Math.min(6, game.stars + 1);
+    showStatus("".concat(reason, ": Automa verdient een ster."));
+    if (game.stars >= 6) {
+        game.gameOver = true;
+        showStatus('Automa heeft 6 sterren. Het spel eindigt.', true);
+    }
+}
+function refillDeck() { game.deck = cards.map(function (c) { return c.id; }); }
+function takeCard() {
+    if (!game.deck.length)
+        refillDeck();
+    var i = Math.floor(Math.random() * game.deck.length);
+    var id = game.deck.splice(i, 1)[0];
+    return cards[id];
+}
+function advanceTracker(card) {
+    if (!card.star)
+        return;
+    var beforePhase = game.phase;
+    game.tracker = Math.min(game.profile.grid.length - 1, game.tracker + 1);
+    var cell = game.profile.grid[game.tracker];
+    if (cell === 2) {
+        awardStar(game.phase === 0 ? 'Star tracker / fasegrens' : 'Star tracker');
+        if (beforePhase === 0) {
+            game.phase = 1;
+            refillDeck();
+            showStatus('Fase II bereikt. De volledige Automa-deck is opnieuw geschud; vanaf de volgende beurt geldt Scheme II.');
+        }
+    }
+}
+function draw() {
+    var e_13, _c, e_14, _d;
+    if (game.gameOver)
+        return;
+    var card = takeCard(), phaseForCard = game.phase, skip = card.skip && game.profile.t === 'easy';
     game.lastCard = card;
     pending = null;
     game.combatVisible = false;
     game.combatTerritory = null;
     game.combatCardMode = false;
-    const actionSet = card.actions[phaseForCard], executed = [], gainLog = [];
-    let chosen = null;
+    var actionSet = card.actions[phaseForCard], executed = [], gainLog = [];
+    var chosen = null;
     if (!skip) {
         if (game.profile.t === 'very hard') {
-            // Ultimaszyna executes every valid Move action, resolving the board after each one.
-            for (const a of actionSet.move) {
-                const m = moveFor(a);
-                if (m) {
-                    if (!chosen)
-                        chosen = a;
-                    executed.push(executeMove(m));
+            try {
+                // Ultimaszyna executes every valid Move action, resolving the board after each one.
+                for (var _e = __values(actionSet.move), _f = _e.next(); !_f.done; _f = _e.next()) {
+                    var a = _f.value;
+                    var m = moveFor(a);
+                    if (m) {
+                        if (!chosen)
+                            chosen = a;
+                        executed.push(executeMove(m));
+                    }
                 }
+            }
+            catch (e_13_1) { e_13 = { error: e_13_1 }; }
+            finally {
+                try {
+                    if (_f && !_f.done && (_c = _e.return)) _c.call(_e);
+                }
+                finally { if (e_13) throw e_13.error; }
             }
         }
         else {
-            // All other difficulties execute only the first valid Move action.
-            for (const a of actionSet.move) {
-                const m = moveFor(a);
-                if (m) {
-                    chosen = a;
-                    executed.push(executeMove(m));
-                    break;
+            try {
+                // All other difficulties execute only the first valid Move action.
+                for (var _g = __values(actionSet.move), _h = _g.next(); !_h.done; _h = _g.next()) {
+                    var a = _h.value;
+                    var m = moveFor(a);
+                    if (m) {
+                        chosen = a;
+                        executed.push(executeMove(m));
+                        break;
+                    }
                 }
+            }
+            catch (e_14_1) { e_14 = { error: e_14_1 }; }
+            finally {
+                try {
+                    if (_h && !_h.done && (_d = _g.return)) _d.call(_g);
+                }
+                finally { if (e_14) throw e_14.error; }
             }
         }
         // Gains happen after movement, so newly deployed units cannot move until a later turn.
-        actionSet.gets.forEach(a => gainOne(a, gainLog));
+        actionSet.gets.forEach(function (a) { return gainOne(a, gainLog); });
         checkPowerStar();
         if (!game.gameOver)
             advanceTracker(card);
@@ -740,74 +1045,113 @@ function draw() {
     if (game.activeCombat)
         openCombatOverlay();
     if (!skip) {
-        const moveText = executed.length ? executed.map(m => `${m.label}: ${m.from} → ${m.to}`).join('<br>') : 'Geen geldige movement-actie.';
-        const gainText = gainLog.length ? `<br><span class="muted">${gainLog.join(' · ')}</span>` : '';
-        $('#result').innerHTML = `<strong>Uitgevoerd</strong><br>${moveText}${gainText}`;
+        var moveText = executed.length ? executed.map(function (m) { var fromLabel=territories[m.from]&&territories[m.from].home?'HOME':m.from+1; var toLabel=territories[m.to]&&territories[m.to].home?'HOME':m.to+1; return m.label + ': ' + fromLabel + ' \u2192 ' + toLabel; }).join('<br>') : 'Geen geldige movement-actie.';
+        var gainText = gainLog.length ? "<br><span class=\"muted\">".concat(gainLog.join(' · '), "</span>") : '';
+        $('#result').innerHTML = "<strong>Uitgevoerd</strong><br>".concat(moveText).concat(gainText);
         $('#result').classList.remove('hidden');
     }
 }
-function drawCombat() { if (game.gameOver)
-    return; if (game.activeCombat) {
-    drawCombatForActiveBattle();
-    return;
-} const card = takeCard(); game.combatVisible = true; game.combatCardMode = true; game.combatTerritory = null; renderCard(card, game.phase, null, false, true); renderAll(); showStatus(`Combatkaart #${card.id + 1} getrokken. De star tracker verandert niet.`); }
-const moveLabel = a => { if (a.t === 'attack')
-    return `Attack ${a.o === 'worker' ? 'worker' : 'combat'}${a.p ? ` · ${a.p}+` : ''}`; return ({ worker: 'Move worker', mech: 'Move mech', character: 'Move character', facobj: 'Factory / Encounter' })[a.t] || a.t; };
-const gainLabel = a => { var _a; return `${(_a = a.q) !== null && _a !== void 0 ? _a : 1}× ${{ gold: 'coin', power: 'power', powercard: 'combat card', worker: 'worker', charormech: 'character/mech' }[a.t] || a.t}${a.faction ? ` · ${a.faction} only` : ''}`; };
+function drawCombat() {
+    if (game.gameOver)
+        return;
+    if (game.activeCombat) {
+        drawCombatForActiveBattle();
+        return;
+    }
+    var card = takeCard();
+    game.combatVisible = true;
+    game.combatCardMode = true;
+    game.combatTerritory = null;
+    renderCard(card, game.phase, null, false, true);
+    renderAll();
+    showStatus("Combatkaart #".concat(card.id + 1, " getrokken. De star tracker verandert niet."));
+}
+var moveLabel = function (a) {
+    if (a.t === 'attack')
+        return "Attack ".concat(a.o === 'worker' ? 'worker' : 'combat').concat(a.p ? " \u00B7 ".concat(a.p, "+") : '');
+    return ({ worker: 'Move worker', mech: 'Move mech', character: 'Move character', facobj: 'Factory / Encounter' })[a.t] || a.t;
+};
+var gainLabel = function (a) { var _a; return "".concat((_a = a.q) !== null && _a !== void 0 ? _a : 1, "\u00D7 ").concat({ gold: 'coin', power: 'power', powercard: 'combat card', worker: 'worker', charormech: 'character/mech' }[a.t] || a.t).concat(a.faction ? " \u00B7 ".concat(a.faction, " only") : ''); };
 function renderCard(card, phaseForCard, chosen, skip, combatOnly) {
-    const a = card.actions[phaseForCard];
-    let body = `<div class="card-head"><strong>Kaart #${card.id + 1}</strong><span class="badge">${combatOnly ? 'Combat' : phaseForCard ? 'Scheme II' : 'Scheme I'}</span></div>`;
+    var a = card.actions[phaseForCard];
+    var body = "<div class=\"card-head\"><strong>Kaart #".concat(card.id + 1, "</strong><span class=\"badge\">").concat(combatOnly ? 'Combat' : phaseForCard ? 'Scheme II' : 'Scheme I', "</span></div>");
     if (!combatOnly) {
         if (skip)
-            body += `<div class="notice">Autometta slaat deze volledige beurt over.</div>`;
+            body += "<div class=\"notice\">Autometta slaat deze volledige beurt over.</div>";
         else
-            body += `<div class="label">Movement · eerste geldige actie</div><div class="chips">${a.move.map(x => `<span class="chip ${x === chosen ? 'primary' : ''}">${moveLabel(x)}${x.faction ? ` · ${x.faction}` : ''}</span>`).join('')}</div><div class="sep"></div><div class="label">Gains</div><div class="chips">${a.gets.length ? a.gets.map(x => `<span class="chip">${gainLabel(x)}</span>`).join('') : '<span class="muted">Geen</span>'}</div><div class="sep"></div><div class="label">Enlist bonus</div><div class="chips">${a.enlist.length ? a.enlist.map(x => `<span class="chip">${x}</span>`).join('') : '<span class="muted">Geen</span>'}</div><div class="sep"></div><div class="label">Star tracker</div><span class="chip">${card.star ? 'Advance' : 'Geen advance'}</span>`;
+            body += "<div class=\"label\">Movement \u00B7 eerste geldige actie</div><div class=\"chips\">".concat(a.move.map(function (x) { return "<span class=\"chip ".concat(x === chosen ? 'primary' : '', "\">").concat(moveLabel(x)).concat(x.faction ? " \u00B7 ".concat(x.faction) : '', "</span>"); }).join(''), "</div><div class=\"sep\"></div><div class=\"label\">Gains</div><div class=\"chips\">").concat(a.gets.length ? a.gets.map(function (x) { return "<span class=\"chip\">".concat(gainLabel(x), "</span>"); }).join('') : '<span class="muted">Geen</span>', "</div><div class=\"sep\"></div><div class=\"label\">Enlist bonus</div><div class=\"chips\">").concat(a.enlist.length ? a.enlist.map(function (x) { return "<span class=\"chip\">".concat(x, "</span>"); }).join('') : '<span class="muted">Geen</span>', "</div><div class=\"sep\"></div><div class=\"label\">Star tracker</div><span class=\"chip\">").concat(card.star ? 'Advance' : 'Geen advance', "</span>");
     }
-    const showCombat = combatOnly || (chosen === null || chosen === void 0 ? void 0 : chosen.t) === 'attack';
+    var showCombat = combatOnly || (chosen === null || chosen === void 0 ? void 0 : chosen.t) === 'attack';
     if (showCombat)
-        body += `<div class="sep"></div><div class="label">Combat</div><div class="combat-grid"><div><span>0–7</span><b>${card.combat.spend[0]}</b></div><div><span>8–13</span><b>${card.combat.spend[1]}</b></div><div><span>14+</span><b>${card.combat.spend[2]}</b></div><div><span>cards</span><b>${card.combat.cards}</b></div><div><span>resources</span><b>${card.combat.resources}</b></div></div>`;
+        body += "<div class=\"sep\"></div><div class=\"label\">Combat</div><div class=\"combat-grid\"><div><span>0\u20137</span><b>".concat(card.combat.spend[0], "</b></div><div><span>8\u201313</span><b>").concat(card.combat.spend[1], "</b></div><div><span>14+</span><b>").concat(card.combat.spend[2], "</b></div><div><span>cards</span><b>").concat(card.combat.cards, "</b></div><div><span>resources</span><b>").concat(card.combat.resources, "</b></div></div>");
     $('#card').innerHTML = body;
 }
-function apply() { var _a; if (!pending)
-    return; const wasCombat = game.combatVisible && game.combatTerritory === pending.to; pending.unit.territory = pending.to; (_a = pending.after) === null || _a === void 0 ? void 0 : _a.call(pending); pending = null; game.combatVisible = wasCombat; render(); $('#result').innerHTML += '<br><span class="muted">Move uitgevoerd.</span>'; }
-function showStatus(text, gameOver = false) { const s = $('#status'); s.textContent = text; s.classList.remove('hidden'); s.classList.toggle('game-over', gameOver); }
-function renderTracker() { const p = game.profile; let seenPhase = false; $('#tracker').innerHTML = p.grid.map((cell, i) => { let symbol = '·', cl = ''; if (i === 0)
-    symbol = 'I';
-else if (cell === 1)
-    symbol = '↻';
-else if (cell === 2 && !seenPhase) {
-    symbol = 'II';
-    cl = ' phase2';
-    seenPhase = true;
+function apply() {
+    var _a;
+    if (!pending)
+        return;
+    var wasCombat = game.combatVisible && game.combatTerritory === pending.to;
+    pending.unit.territory = pending.to;
+    (_a = pending.after) === null || _a === void 0 ? void 0 : _a.call(pending);
+    pending = null;
+    game.combatVisible = wasCombat;
+    render();
+    $('#result').innerHTML += '<br><span class="muted">Move uitgevoerd.</span>';
 }
-else if (cell === 2)
-    symbol = '★'; return `<span class="track-cell${i < game.tracker ? ' done' : ''}${i === game.tracker ? ' current' : ''}${cl}">${symbol}</span>`; }).join(''); }
-function renderAll() { syncFactionColors(); render(); renderTracker(); $('#phase').textContent = game.phase ? 'Scheme II' : 'Scheme I'; $('#river').textContent = riversUnlocked() ? 'Riverwalk: actief' : 'Riverwalk: geblokkeerd'; $('#stars').textContent = '★'.repeat(game.stars) + '☆'.repeat(6 - game.stars); $('#starsCount').textContent = game.stars; $('#coins').textContent = game.coins; $('#combatCards').textContent = game.combatCards; $('#workers').textContent = units.filter(u => u.owner === 'automa' && u.type === 'worker').length; $('#deckInfo').textContent = `${game.deck.length}/19 over`; $('#draw').disabled = game.gameOver; }
-function ensureDistinctFactions(changed = 'automa') {
+function showStatus(text, gameOver) {
+    if (gameOver === void 0) { gameOver = false; }
+    var s = $('#status');
+    s.textContent = text;
+    s.classList.remove('hidden');
+    s.classList.toggle('game-over', gameOver);
+}
+function renderTracker() {
+    var p = game.profile;
+    var seenPhase = false;
+    $('#tracker').innerHTML = p.grid.map(function (cell, i) {
+        var symbol = '·', cl = '';
+        if (i === 0)
+            symbol = 'I';
+        else if (cell === 1)
+            symbol = '↻';
+        else if (cell === 2 && !seenPhase) {
+            symbol = 'II';
+            cl = ' phase2';
+            seenPhase = true;
+        }
+        else if (cell === 2)
+            symbol = '★';
+        return "<span class=\"track-cell".concat(i < game.tracker ? ' done' : '').concat(i === game.tracker ? ' current' : '').concat(cl, "\">").concat(symbol, "</span>");
+    }).join('');
+}
+function renderAll() { syncFactionColors(); render(); renderTracker(); $('#phase').textContent = game.phase ? 'Scheme II' : 'Scheme I'; $('#river').textContent = riversUnlocked() ? 'Riverwalk: actief' : 'Riverwalk: geblokkeerd'; $('#stars').textContent = '★'.repeat(game.stars) + '☆'.repeat(6 - game.stars); $('#starsCount').textContent = game.stars; $('#coins').textContent = game.coins; $('#combatCards').textContent = game.combatCards; $('#workers').textContent = units.filter(function (u) { return u.owner === 'automa' && u.type === 'worker'; }).length; $('#deckInfo').textContent = "".concat(game.deck.length, "/19 over"); $('#draw').disabled = game.gameOver; }
+function ensureDistinctFactions(changed) {
+    if (changed === void 0) { changed = 'automa'; }
     if ($('#humanFaction').value !== $('#automaFaction').value)
         return;
-    const other = changed === 'human' ? '#automaFaction' : '#humanFaction';
-    const used = changed === 'human' ? $('#humanFaction').value : $('#automaFaction').value;
-    $(other).value = [...$(other).options].map(o => o.value).find(v => v !== used);
+    var other = changed === 'human' ? '#automaFaction' : '#humanFaction';
+    var used = changed === 'human' ? $('#humanFaction').value : $('#automaFaction').value;
+    $(other).value = __spreadArray([], __read($(other).options), false).map(function (o) { return o.value; }).find(function (v) { return v !== used; });
 }
 function setupStartingUnits() {
     units = [];
     uid = 1;
     // Human character has a fixed home-base setup; human workers are entered manually
     // so the helper reflects the physical board state chosen/confirmed by the player.
-    const human = factionData[$('#humanFaction').value];
+    var human = factionData[$('#humanFaction').value];
     add('human', 'character', human.homeId, false);
     // Official Automa setup: character on its home base and one worker on each of the
     // two land territories adjacent to that base.
-    const automa = factionData[$('#automaFaction').value];
+    var automa = factionData[$('#automaFaction').value];
     add('automa', 'character', automa.homeId, false);
-    automa.adjacentIds.forEach(id => add('automa', 'worker', id, false));
+    automa.adjacentIds.forEach(function (id) { return add('automa', 'worker', id, false); });
 }
 function resetGame() {
     markers.encounter = new Set(DEFAULT_ENCOUNTER_IDS);
     ensureDistinctFactions();
-    game = { profile: profiles[$('#difficulty').value], tracker: 0, phase: 0, deck: [], discards: [], stars: 0, combatStars: 0, powerStar: false, coins: 5, combatCards: 0, factoryCard: false, lastCard: null, gameOver: false, combatVisible: false, combatTerritory: null, combatCardMode: false, activeCombat: null };
+    game = { profile: profiles[$('#difficulty').value], tracker: 0, phase: 0, deck: [], discards: [], stars: 0, combatStars: 0, powerStar: false, coins: 5, combatCards: 0, factoryCard: false, lastCard: null, gameOver: false, combatVisible: false, combatTerritory: null, combatCardMode: false, activeCombat: null, lastMovement: null };
     $('#power').value = 4;
+    closeFactoryAlert();
     setupStartingUnits();
     refillDeck();
     pending = null;
@@ -817,130 +1161,327 @@ function resetGame() {
     $('#result').innerHTML = '';
     renderAll();
 }
-function poly(x, y, r = 52) { return Array.from({ length: 6 }, (_, i) => { const a = (-30 + i * 60) * Math.PI / 180; return `${x + r * Math.cos(a)},${y + r * Math.sin(a)}`; }).join(' '); }
-const faClass = { worker: 'fa-person', mech: 'fa-khanda', character: 'fa-star', bolt: 'fa-bolt' };
-function faBoardIcon(type, color, x, y, combat = false) { return `<foreignObject class="board-icon${combat ? ' combat' : ''}" x="${x - 25}" y="${y - 25}" width="50" height="50" style="overflow:visible;pointer-events:none"><div xmlns="http://www.w3.org/1999/xhtml" style="width:50px;height:50px;display:grid;place-items:center"><span class="board-piece" style="--piece-color:${color}"><i class="fa-solid ${faClass[type]}"></i></span></div></foreignObject>`; }
+function poly(x, y, r) {
+    if (r === void 0) { r = 52; }
+    return Array.from({ length: 6 }, function (_, i) { var a = (-30 + i * 60) * Math.PI / 180; return "".concat(x + r * Math.cos(a), ",").concat(y + r * Math.sin(a)); }).join(' ');
+}
+var faClass = { worker: 'fa-person', mech: 'fa-khanda', character: 'fa-star', bolt: 'fa-bolt' };
+function faBoardIcon(type, color, x, y, combat, count) {
+    if (combat === void 0) { combat = false; }
+    if (count === void 0) { count = 1; }
+    var counter = count > 1 ? '<span class="board-count" style="--piece-color:' + color + ';background:' + color + ';color:#000">' + count + '</span>' : '';
+    return '<foreignObject class="board-icon' + (combat ? ' combat' : '') + '" x="' + (x - 25) + '" y="' + (y - 25) + '" width="50" height="50" style="overflow:visible;pointer-events:none"><div xmlns="http://www.w3.org/1999/xhtml" style="width:50px;height:50px;display:grid;place-items:center;position:relative"><span class="board-piece" style="--piece-color:' + color + '"><i class="fa-solid ' + faClass[type] + '"></i></span>' + counter + '</div></foreignObject>';
+}
 function riverSegment(a, b) {
-    const A = territories[a], B = territories[b];
-    const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
-    const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy);
-    const px = -dy / len, py = dx / len, half = 27;
+    var A = territories[a], B = territories[b];
+    var mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+    var dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy);
+    var px = -dy / len, py = dx / len, half = 27;
     return { x1: mx - px * half, y1: my - py * half, x2: mx + px * half, y2: my + py * half };
 }
-function riverSideSegment(hexNumber, side, r = 52) {
-    const t = territories[hexNumber - 1];
-    const angles = [-30, 30, 90, 150, 210, 270].map(a => a * Math.PI / 180);
-    const pts = angles.map(a => ({ x: t.x + r * Math.cos(a), y: t.y + r * Math.sin(a) }));
-    const edges = { R: [0, 1], LR: [1, 2], LL: [2, 3], L: [3, 4], UL: [4, 5], UR: [5, 0] };
-    const [a, b] = edges[side];
+function riverSideSegment(hexNumber, side, r) {
+    if (r === void 0) { r = 52; }
+    var t = territories[hexNumber - 1];
+    var angles = [-30, 30, 90, 150, 210, 270].map(function (a) { return a * Math.PI / 180; });
+    var pts = angles.map(function (a) { return ({ x: t.x + r * Math.cos(a), y: t.y + r * Math.sin(a) }); });
+    var edges = { R: [0, 1], LR: [1, 2], LL: [2, 3], L: [3, 4], UL: [4, 5], UR: [5, 0] };
+    var _c = __read(edges[side], 2), a = _c[0], b = _c[1];
     return { x1: pts[a].x, y1: pts[a].y, x2: pts[b].x, y2: pts[b].y };
 }
 function render() {
-    svg.innerHTML = `<rect x="-60" y="-60" width="890" height="848" rx="16" fill="#0d0f12"/>`;
-    for (const t of boardTerritories) {
-        svg.insertAdjacentHTML('beforeend', `<g class="territory${lakeIds.has(t.id) ? ' water-hex' : ''}" data-id="${t.id}" style="cursor:pointer"><polygon points="${poly(t.x, t.y)}"/></g>`);
-    }
-    // Show each faction's fixed three-hex starting peninsula. Selected factions are
-    // emphasized, the others remain visible as a subtle board reference.
-    for (const [key, f] of Object.entries(factionData)) {
-        const selected = $('#humanFaction').value === key || $('#automaFaction').value === key;
-        for (const id of f.peninsulaIds) {
-            const t = territories[id];
-            svg.insertAdjacentHTML('beforeend', `<polygon class="peninsula-mark" points="${poly(t.x, t.y, 44)}" fill="${f.color}" fill-opacity="${selected ? '.08' : '.025'}" stroke="${f.color}" stroke-opacity="${selected ? '.78' : '.24'}" stroke-width="${selected ? '2.5' : '1.4'}" stroke-dasharray="5 5" pointer-events="none"/>`);
+    var e_15, _c, e_16, _d, e_17, _e, e_18, _f, e_19, _g, e_20, _h, e_21, _j, e_22, _k, e_23, _l;
+    svg.innerHTML = "<rect x=\"-60\" y=\"-60\" width=\"890\" height=\"848\" rx=\"16\" fill=\"#0d0f12\"/>";
+    try {
+        for (var boardTerritories_1 = __values(boardTerritories), boardTerritories_1_1 = boardTerritories_1.next(); !boardTerritories_1_1.done; boardTerritories_1_1 = boardTerritories_1.next()) {
+            var t = boardTerritories_1_1.value;
+            svg.insertAdjacentHTML('beforeend', "<g class=\"territory".concat(lakeIds.has(t.id) ? ' water-hex' : '', "\" data-id=\"").concat(t.id, "\" style=\"cursor:pointer\"><polygon points=\"").concat(poly(t.x, t.y), "\"/></g>"));
         }
+    }
+    catch (e_15_1) { e_15 = { error: e_15_1 }; }
+    finally {
+        try {
+            if (boardTerritories_1_1 && !boardTerritories_1_1.done && (_c = boardTerritories_1.return)) _c.call(boardTerritories_1);
+        }
+        finally { if (e_15) throw e_15.error; }
+    }
+    try {
+        // Show each faction's fixed three-hex starting peninsula. Selected factions are
+        // emphasized, the others remain visible as a subtle board reference.
+        for (var _m = __values(Object.entries(factionData)), _o = _m.next(); !_o.done; _o = _m.next()) {
+            var _p = __read(_o.value, 2), key = _p[0], f = _p[1];
+            var selected_1 = $('#humanFaction').value === key || $('#automaFaction').value === key;
+            try {
+                for (var _q = (e_17 = void 0, __values(f.peninsulaIds)), _r = _q.next(); !_r.done; _r = _q.next()) {
+                    var id = _r.value;
+                    var t = territories[id];
+                    svg.insertAdjacentHTML('beforeend', "<polygon class=\"peninsula-mark\" points=\"".concat(poly(t.x, t.y, 44), "\" fill=\"").concat(f.color, "\" fill-opacity=\"").concat(selected_1 ? '.08' : '.025', "\" stroke=\"").concat(f.color, "\" stroke-opacity=\"").concat(selected_1 ? '.78' : '.24', "\" stroke-width=\"").concat(selected_1 ? '2.5' : '1.4', "\" stroke-dasharray=\"5 5\" pointer-events=\"none\"/>"));
+                }
+            }
+            catch (e_17_1) { e_17 = { error: e_17_1 }; }
+            finally {
+                try {
+                    if (_r && !_r.done && (_e = _q.return)) _e.call(_q);
+                }
+                finally { if (e_17) throw e_17.error; }
+            }
+        }
+    }
+    catch (e_16_1) { e_16 = { error: e_16_1 }; }
+    finally {
+        try {
+            if (_o && !_o.done && (_d = _m.return)) _d.call(_m);
+        }
+        finally { if (e_16) throw e_16.error; }
     }
     // Factory marker: prominent, white and slightly larger than unit badges.
     {
-        const t = territories[factoryId];
-        svg.insertAdjacentHTML('beforeend', `<g class="factory-icon"><circle cx="${t.x}" cy="${t.y}" r="25"/><foreignObject x="${t.x - 18}" y="${t.y - 18}" width="36" height="36"><div xmlns="http://www.w3.org/1999/xhtml" style="width:36px;height:36px;display:grid;place-items:center;color:#fff;font-size:23px"><i class="fa-solid fa-industry"></i></div></foreignObject></g>`);
+        var t = territories[factoryId];
+        svg.insertAdjacentHTML('beforeend', "<g class=\"factory-icon\"><circle cx=\"".concat(t.x, "\" cy=\"").concat(t.y, "\" r=\"25\"/><foreignObject x=\"").concat(t.x - 18, "\" y=\"").concat(t.y - 18, "\" width=\"36\" height=\"36\"><div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"width:36px;height:36px;display:grid;place-items:center;color:#fff;font-size:23px\"><i class=\"fa-solid fa-industry\"></i></div></foreignObject></g>"));
     }
-    // Water overlays: lakes are marked inside their hex; rivers are highlighted on the exact shared edge.
-    for (const id of lakeIds) {
-        const t = territories[id];
-        svg.insertAdjacentHTML('beforeend', `<g class="water-mark"><circle cx="${t.x}" cy="${t.y + 29}" r="13" fill="rgba(5,25,34,.86)" stroke="#4fc3f7" stroke-width="2"/><text x="${t.x}" y="${t.y + 34}" text-anchor="middle" fill="#7ddcff" font-size="16">≈</text></g>`);
+    try {
+        // Water overlays: lakes are marked inside their hex; rivers are highlighted on the exact shared edge.
+        for (var lakeIds_2 = __values(lakeIds), lakeIds_2_1 = lakeIds_2.next(); !lakeIds_2_1.done; lakeIds_2_1 = lakeIds_2.next()) {
+            var id = lakeIds_2_1.value;
+            var t = territories[id];
+            svg.insertAdjacentHTML('beforeend', "<g class=\"water-mark\"><circle cx=\"".concat(t.x, "\" cy=\"").concat(t.y + 29, "\" r=\"13\" fill=\"rgba(5,25,34,.86)\" stroke=\"#4fc3f7\" stroke-width=\"2\"/><text x=\"").concat(t.x, "\" y=\"").concat(t.y + 34, "\" text-anchor=\"middle\" fill=\"#7ddcff\" font-size=\"16\">\u2248</text></g>"));
+        }
     }
-    // Encounter tokens use the same footprint as lake markers. They remain part of
-    // board state until the player removes them or Automa resolves an encounter there.
-    for (const id of markers.encounter) {
-        const t = territories[id];
-        if (!t || t.home)
-            continue;
-        svg.insertAdjacentHTML('beforeend', `<g class="encounter-mark"><circle cx="${t.x}" cy="${t.y + 29}" r="13"/><foreignObject x="${t.x - 9}" y="${t.y + 20}" width="18" height="18"><div xmlns="http://www.w3.org/1999/xhtml" style="width:18px;height:18px;display:grid;place-items:center;color:#f4b942;font-size:12px"><i class="fa-solid fa-compass"></i></div></foreignObject></g>`);
+    catch (e_18_1) { e_18 = { error: e_18_1 }; }
+    finally {
+        try {
+            if (lakeIds_2_1 && !lakeIds_2_1.done && (_f = lakeIds_2.return)) _f.call(lakeIds_2);
+        }
+        finally { if (e_18) throw e_18.error; }
     }
-    for (const [a, b] of riverEdges) {
-        const l = riverSegment(a, b);
-        svg.insertAdjacentHTML('beforeend', `<line class="river-edge" x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}"/>`);
+    try {
+        // Encounter tokens use the same footprint as lake markers. They remain part of
+        // board state until the player removes them or Automa resolves an encounter there.
+        for (var _s = __values(markers.encounter), _t = _s.next(); !_t.done; _t = _s.next()) {
+            var id = _t.value;
+            var t = territories[id];
+            if (!t || t.home)
+                continue;
+            svg.insertAdjacentHTML('beforeend', "<g class=\"encounter-mark\"><circle cx=\"".concat(t.x, "\" cy=\"").concat(t.y + 29, "\" r=\"13\"/><foreignObject x=\"").concat(t.x - 9, "\" y=\"").concat(t.y + 20, "\" width=\"18\" height=\"18\"><div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"width:18px;height:18px;display:grid;place-items:center;color:#f4b942;font-size:12px\"><i class=\"fa-solid fa-compass\"></i></div></foreignObject></g>"));
+        }
     }
-    for (const e of extraRiverSides) {
-        const l = riverSideSegment(e.hex, e.side);
-        svg.insertAdjacentHTML('beforeend', `<line class="river-edge" x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}"/>`);
+    catch (e_19_1) { e_19 = { error: e_19_1 }; }
+    finally {
+        try {
+            if (_t && !_t.done && (_g = _s.return)) _g.call(_s);
+        }
+        finally { if (e_19) throw e_19.error; }
     }
-    for (const [key, f] of Object.entries(factionData)) {
-        const selectedHuman = $('#humanFaction').value === key, selectedAutoma = $('#automaFaction').value === key;
-        const stroke = f.color, text = key === 'white' ? '#11151b' : f.color;
+    try {
+        for (var riverEdges_1 = __values(riverEdges), riverEdges_1_1 = riverEdges_1.next(); !riverEdges_1_1.done; riverEdges_1_1 = riverEdges_1.next()) {
+            var _u = __read(riverEdges_1_1.value, 2), a = _u[0], b = _u[1];
+            var l = riverSegment(a, b);
+            svg.insertAdjacentHTML('beforeend', "<line class=\"river-edge\" x1=\"".concat(l.x1, "\" y1=\"").concat(l.y1, "\" x2=\"").concat(l.x2, "\" y2=\"").concat(l.y2, "\"/>"));
+        }
+    }
+    catch (e_20_1) { e_20 = { error: e_20_1 }; }
+    finally {
+        try {
+            if (riverEdges_1_1 && !riverEdges_1_1.done && (_h = riverEdges_1.return)) _h.call(riverEdges_1);
+        }
+        finally { if (e_20) throw e_20.error; }
+    }
+    try {
+        for (var extraRiverSides_1 = __values(extraRiverSides), extraRiverSides_1_1 = extraRiverSides_1.next(); !extraRiverSides_1_1.done; extraRiverSides_1_1 = extraRiverSides_1.next()) {
+            var e = extraRiverSides_1_1.value;
+            var l = riverSideSegment(e.hex, e.side);
+            svg.insertAdjacentHTML('beforeend', "<line class=\"river-edge\" x1=\"".concat(l.x1, "\" y1=\"").concat(l.y1, "\" x2=\"").concat(l.x2, "\" y2=\"").concat(l.y2, "\"/>"));
+        }
+    }
+    catch (e_21_1) { e_21 = { error: e_21_1 }; }
+    finally {
+        try {
+            if (extraRiverSides_1_1 && !extraRiverSides_1_1.done && (_j = extraRiverSides_1.return)) _j.call(extraRiverSides_1);
+        }
+        finally { if (e_21) throw e_21.error; }
+    }
+    if (game.lastMovement) {
+        var lm = game.lastMovement, moveColor = factionColorForOwner(lm.owner || 'automa');
+        var toT = territories[lm.to];
+        if (toT && !toT.home) {
+            svg.insertAdjacentHTML('beforeend','<polygon class="last-move-ring" points="'+poly(toT.x,toT.y,47)+'" style="stroke:'+moveColor+';color:'+moveColor+'"/>');
+        }
+        var fromT = territories[lm.from];
+        if (fromT && !fromT.home) {
+            var bx=fromT.x-32, by=fromT.y-27;
+            svg.insertAdjacentHTML('beforeend','<g class="last-move-origin"><circle cx="'+bx+'" cy="'+by+'" r="12" stroke="'+moveColor+'"/><text x="'+bx+'" y="'+(by+1)+'">'+(lm.from+1)+'</text></g>');
+        }
+    }
+    var _loop_3 = function (key, f) {
+        var selectedHuman = $('#humanFaction').value === key, selectedAutoma = $('#automaFaction').value === key;
+        var stroke = f.color, text = key === 'white' ? '#11151b' : f.color;
         // The faction home marker always keeps the faction's own colour.
         // Selecting it as the Automa must not recolour the flag/rings to the generic Automa colour.
-        const flagColor = f.color;
-        const extra = selectedHuman || selectedAutoma ? `stroke-dasharray="${selectedHuman && selectedAutoma ? '3 3' : '8 4'}"` : '';
-        const homeUnits = at(f.homeId);
-        svg.insertAdjacentHTML('beforeend', `<g class="home-base" style="opacity:${selectedHuman || selectedAutoma ? 1 : .2}"><circle class="home-ring" cx="${f.home.x}" cy="${f.home.y}" r="39" fill="rgba(8,11,15,.38)" stroke="${stroke}" stroke-width="4" ${extra}/><circle cx="${f.home.x}" cy="${f.home.y}" r="27" fill="rgba(8,11,15,.78)" stroke="${stroke}" stroke-width="2"/><foreignObject x="${f.home.x - 17}" y="${f.home.y - 17}" width="34" height="34"><div xmlns="http://www.w3.org/1999/xhtml" style="width:34px;height:34px;display:grid;place-items:center;color:${flagColor};font-size:18px"><i class="fa-solid fa-flag"></i></div></foreignObject></g>`);
+        var flagColor = f.color;
+        var extra = selectedHuman || selectedAutoma ? "stroke-dasharray=\"".concat(selectedHuman && selectedAutoma ? '3 3' : '8 4', "\"") : '';
+        var homeUnits = at(f.homeId);
+        svg.insertAdjacentHTML('beforeend', "<g class=\"home-base\" style=\"opacity:".concat(selectedHuman || selectedAutoma ? 1 : .2, "\"><circle class=\"home-ring\" cx=\"").concat(f.home.x, "\" cy=\"").concat(f.home.y, "\" r=\"39\" fill=\"rgba(8,11,15,.38)\" stroke=\"").concat(stroke, "\" stroke-width=\"4\" ").concat(extra, "/><circle cx=\"").concat(f.home.x, "\" cy=\"").concat(f.home.y, "\" r=\"27\" fill=\"rgba(8,11,15,.78)\" stroke=\"").concat(stroke, "\" stroke-width=\"2\"/><foreignObject x=\"").concat(f.home.x - 17, "\" y=\"").concat(f.home.y - 17, "\" width=\"34\" height=\"34\"><div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"width:34px;height:34px;display:grid;place-items:center;color:").concat(flagColor, ";font-size:18px\"><i class=\"fa-solid fa-flag\"></i></div></foreignObject></g>"));
         if (selectedHuman)
-            svg.insertAdjacentHTML('beforeend', `<text class="home-role" x="${f.home.x}" y="${f.home.y + 51}" text-anchor="middle" fill="${f.color}">YOU</text>`);
-        const owners = ['human', 'automa'];
-        owners.forEach((owner, oi) => {
-            const c = factionColorForOwner(owner), own = homeUnits.filter(u => u.owner === owner);
-            const counts = { worker: own.filter(u => u.type === 'worker').length, mech: own.filter(u => u.type === 'mech').length, character: own.filter(u => u.type === 'character').length };
-            const entries = ['character', 'mech', 'worker'].filter(type => counts[type] > 0);
-            entries.forEach((type, i) => {
-                const angle = (-70 + (i * 42) + (oi ? 12 : -12)) * Math.PI / 180, rr = 47, x = f.home.x + Math.cos(angle) * rr, y = f.home.y + Math.sin(angle) * rr;
-                const icon = type === 'worker' ? '●' : type === 'mech' ? '⚔' : '★';
-                svg.insertAdjacentHTML('beforeend', `<g class="home-unit"><circle cx="${x}" cy="${y}" r="12" stroke="${c}"/><text x="${x}" y="${y + 1}" fill="${c}">${icon}</text>${counts[type] > 1 ? `<circle cx="${x + 9}" cy="${y - 9}" r="7" fill="${c}"/><text class="home-unit-count" x="${x + 9}" y="${y - 8}">${counts[type]}</text>` : ''}</g>`);
+            svg.insertAdjacentHTML('beforeend', "<text class=\"home-role\" x=\"".concat(f.home.x, "\" y=\"").concat(f.home.y + 51, "\" text-anchor=\"middle\" fill=\"").concat(f.color, "\">YOU</text>"));
+        var owners = ['human', 'automa'];
+        owners.forEach(function (owner, oi) {
+            var c = factionColorForOwner(owner), own = homeUnits.filter(function (u) { return u.owner === owner; });
+            var counts = { worker: own.filter(function (u) { return u.type === 'worker'; }).length, mech: own.filter(function (u) { return u.type === 'mech'; }).length, character: own.filter(function (u) { return u.type === 'character'; }).length };
+            var entries = ['character', 'mech', 'worker'].filter(function (type) { return counts[type] > 0; });
+            entries.forEach(function (type, i) {
+                var angle = (-70 + (i * 42) + (oi ? 12 : -12)) * Math.PI / 180, rr = 47, x = f.home.x + Math.cos(angle) * rr, y = f.home.y + Math.sin(angle) * rr;
+                var icon = type === 'worker' ? '●' : type === 'mech' ? '⚔' : '★';
+                svg.insertAdjacentHTML('beforeend', "<g class=\"home-unit\"><circle cx=\"".concat(x, "\" cy=\"").concat(y, "\" r=\"12\" stroke=\"").concat(c, "\"/><text x=\"").concat(x, "\" y=\"").concat(y + 1, "\" fill=\"").concat(c, "\">").concat(icon, "</text>").concat(counts[type] > 1 ? "<circle cx=\"".concat(x + 9, "\" cy=\"").concat(y - 9, "\" r=\"7\" fill=\"").concat(c, "\"/><text class=\"home-unit-count\" x=\"").concat(x + 9, "\" y=\"").concat(y - 8, "\">").concat(counts[type], "</text>") : '', "</g>"));
             });
         });
-    }
-    for (const t of boardTerritories) {
-        const here = at(t.id), h = here.find(u => u.owner === 'human'), a = here.find(u => u.owner === 'automa');
-        const showBolt = game.combatVisible && h && a && (game.combatCardMode || game.combatTerritory === t.id);
-        if (showBolt) {
-            svg.insertAdjacentHTML('beforeend', `<g class="combat-bolt" data-combat="${t.id}"><circle cx="${t.x}" cy="${t.y}" r="28" fill="transparent" pointer-events="all"/>${faBoardIcon('bolt', '#ffd85a', t.x, t.y, true)}</g>`);
-            continue;
+    };
+    try {
+        for (var _v = __values(Object.entries(factionData)), _w = _v.next(); !_w.done; _w = _v.next()) {
+            var _x = __read(_w.value, 2), key = _x[0], f = _x[1];
+            _loop_3(key, f);
         }
-        if (h)
-            svg.insertAdjacentHTML('beforeend', faBoardIcon(h.type, factionColorForOwner('human'), t.x - (a ? 13 : 0), t.y));
-        if (a)
-            svg.insertAdjacentHTML('beforeend', faBoardIcon(a.type, factionColorForOwner('automa'), t.x + (h ? 13 : 0), t.y));
     }
-    svg.querySelectorAll('.territory').forEach(g => g.onclick = e => openHexMenu(+g.dataset.id, e));
-    svg.querySelectorAll('.combat-bolt').forEach(g => g.onclick = e => { e.stopPropagation(); const id = +g.dataset.combat; if (!game.activeCombat)
-        setCombatState(id, game.lastCard, 'board'); openCombatOverlay(); });
+    catch (e_22_1) { e_22 = { error: e_22_1 }; }
+    finally {
+        try {
+            if (_w && !_w.done && (_k = _v.return)) _k.call(_v);
+        }
+        finally { if (e_22) throw e_22.error; }
+    }
+    try {
+        for (var boardTerritories_2 = __values(boardTerritories), boardTerritories_2_1 = boardTerritories_2.next(); !boardTerritories_2_1.done; boardTerritories_2_1 = boardTerritories_2.next()) {
+            var t = boardTerritories_2_1.value;
+            var here = at(t.id);
+            var hCombat = here.some(function(u){return u.owner==='human' && isCombatUnit(u);});
+            var aCombat = here.some(function(u){return u.owner==='automa' && isCombatUnit(u);});
+            var showBolt = game.combatVisible && hCombat && aCombat && (game.combatCardMode || game.combatTerritory === t.id);
+            if (showBolt) {
+                svg.insertAdjacentHTML('beforeend', '<g class="combat-bolt" data-combat="' + t.id + '"><circle cx="' + t.x + '" cy="' + t.y + '" r="28" fill="transparent" pointer-events="all"/>' + faBoardIcon('bolt', '#ffd85a', t.x, t.y, true, 1) + '</g>');
+                continue;
+            }
+            // Keep the map visually quiet: show only the strongest piece for each owner.
+            // The badge count is the total number of that owner's pieces on this hex;
+            // the hex dialog still exposes the exact worker/mech/character breakdown.
+            var visibleStacks=[];
+            ['human','automa'].forEach(function(owner){
+                var own=here.filter(function(u){return u.owner===owner;});
+                if(!own.length) return;
+                var strongest=own.some(function(u){return u.type==='character';}) ? 'character'
+                    : own.some(function(u){return u.type==='mech';}) ? 'mech' : 'worker';
+                visibleStacks.push({owner:owner,type:strongest,count:own.length});
+            });
+            var positions = visibleStacks.length===1 ? [[0,0]] : [[-15,0],[15,0]];
+            visibleStacks.forEach(function(st,idx){
+                var pos=positions[idx] || [0,0];
+                svg.insertAdjacentHTML('beforeend',faBoardIcon(st.type,factionColorForOwner(st.owner),t.x+pos[0],t.y+pos[1],false,st.count));
+            });
+        }
+    }
+    catch (e_23_1) { e_23 = { error: e_23_1 }; }
+    finally {
+        try { if (boardTerritories_2_1 && !boardTerritories_2_1.done && (_l = boardTerritories_2.return)) _l.call(boardTerritories_2); }
+        finally { if (e_23) throw e_23.error; }
+    }
+    svg.querySelectorAll('.territory').forEach(function (g) { return g.onclick = function (e) { return openHexMenu(+g.dataset.id, e); }; });
+    svg.querySelectorAll('.combat-bolt').forEach(function (g) { return g.onclick = function (e) {
+        e.stopPropagation();
+        var id = +g.dataset.combat;
+        if (!game.activeCombat)
+            setCombatState(id, game.lastCard, 'board');
+        openCombatOverlay();
+    }; });
 }
-function setPiece(id, owner, type) { units = units.filter(u => !(u.territory === id && u.owner === owner)); if (type)
-    add(owner, type, id, false); const startsCombat = isCombatUnit({ type }) && hasCombatAt(id); if (startsCombat)
-    setCombatState(id, null, owner); closeHexMenu(); renderAll(); if (startsCombat)
-    openCombatOverlay(); }
-function clearHex(id) { units = units.filter(u => u.territory !== id); closeHexMenu(); renderAll(); }
-function toggleEncounter(id) { if (markers.encounter.has(id))
-    markers.encounter.delete(id);
-else
-    markers.encounter.add(id); closeHexMenu(); renderAll(); }
-function iconMini(type, color) { return `<span class="fa-icon" style="color:${color}"><i class="fa-solid ${faClass[type]}"></i></span>`; }
-function openHexMenu(id, e) {
+function pieceCount(id, owner, type){ return units.filter(function(u){return u.territory===id&&u.owner===owner&&u.type===type;}).length; }
+function totalPieceCount(owner,type){ return units.filter(function(u){return u.owner===owner&&u.type===type;}).length; }
+function adjustPiece(id, owner, type, delta) {
+    var previousCharacterTerritory = null;
+    if (delta > 0) {
+        if(type==='character'){
+            // Each faction owns exactly one character. "+" means place/move that
+            // existing character to this hex rather than trying to create a second one.
+            var existing=units.filter(function(u){return u.owner===owner&&u.type==='character';})[0] || null;
+            if(existing){
+                previousCharacterTerritory=existing.territory;
+                existing.territory=id;
+            }else{
+                add(owner,type,id,false);
+            }
+        }else{
+            var max = type==='worker' ? 8 : 4;
+            if (totalPieceCount(owner,type) >= max) return;
+            add(owner,type,id,false);
+        }
+    } else {
+        var candidates=units.filter(function(u){return u.territory===id&&u.owner===owner&&u.type===type;});
+        var candidate=candidates.length?candidates[candidates.length-1]:null;
+        if(candidate) units=units.filter(function(u){return u.id!==candidate.id;});
+    }
+
+    // Moving a character away may end combat on its old hex.
+    if(previousCharacterTerritory!==null && game.activeCombat &&
+       game.activeCombat.territory===previousCharacterTerritory &&
+       !hasCombatAt(previousCharacterTerritory)){
+        game.activeCombat=null;
+        game.combatVisible=false;
+        game.combatTerritory=null;
+        closeCombatOverlay();
+    }
+
+    var startsCombat = isCombatUnit({type:type}) && hasCombatAt(id);
+    if (startsCombat) setCombatState(id,null,owner);
+    else if (game.activeCombat && game.activeCombat.territory===id && !hasCombatAt(id)) {
+        game.activeCombat=null;game.combatVisible=false;game.combatTerritory=null;closeCombatOverlay();
+    }
+    renderAll();
+    if(type==='character' && delta>0){
+        closeHexMenu();
+    }else{
+        openHexMenuById(id);
+    }
+    if (startsCombat) openCombatOverlay();
+}
+function setPiece(id,owner,type){ adjustPiece(id,owner,type,1); }
+
+function clearHex(id) { units = units.filter(function (u) { return u.territory !== id; }); closeHexMenu(); renderAll(); }
+function toggleEncounter(id) {
+    if (markers.encounter.has(id))
+        markers.encounter.delete(id);
+    else
+        markers.encounter.add(id);
+    closeHexMenu();
+    renderAll();
+}
+function iconMini(type, color) { return "<span class=\"fa-icon\" style=\"color:".concat(color, "\"><i class=\"fa-solid ").concat(faClass[type], "\"></i></span>"); }
+function stackRow(id,owner,type,label,color,name){
+    var count=pieceCount(id,owner,type);
+    var plusLabel=type==='character'?'Plaats/verplaats character':'Voeg toe';
+    return '<div class="piece-choice"><div class="stack-control"><span>'+iconMini(type,color)+'<span>'+label+' <small>('+name+')</small></span></span><span class="stack-buttons"><button onclick="adjustPiece('+id+',\''+owner+'\',\''+type+'\',-1)" aria-label="Verwijder">−</button><span class="count">'+count+'</span><button onclick="adjustPiece('+id+',\''+owner+'\',\''+type+'\',1)" aria-label="'+plusLabel+'">+</button></span></div></div>';
+}
+function openHexMenuById(id){
+    var menu=$('#hexMenu');
     syncFactionColors();
-    const menu = $('#hexMenu'), t = territories[id], rect = $('.board-wrap').getBoundingClientRect();
-    const humanColor = factionColorForOwner('human'), automaColor = factionColorForOwner('automa');
-    const humanName = factionData[$('#humanFaction').value].name, automaName = factionData[$('#automaFaction').value].name;
-    const encounterPresent = markers.encounter.has(id);
-    menu.innerHTML = `<div class="hex-menu-head"><div><div class="label">Hex ${id + 1}</div><div class="hex-menu-title">Kies bezetting</div></div><button class="hex-menu-close" onclick="closeHexMenu()">×</button></div><div class="choice-grid"><button class="piece-choice choice-human" onclick="setPiece(${id},'human','worker')">${iconMini('worker', humanColor)}<span>Jij · worker <small>(${humanName})</small></span></button><button class="piece-choice choice-automa" onclick="setPiece(${id},'automa','worker')">${iconMini('worker', automaColor)}<span>Automa · worker <small>(${automaName})</small></span></button><button class="piece-choice choice-human" onclick="setPiece(${id},'human','mech')">${iconMini('mech', humanColor)}<span>Jij · mech <small>(${humanName})</small></span></button><button class="piece-choice choice-automa" onclick="setPiece(${id},'automa','mech')">${iconMini('mech', automaColor)}<span>Automa · mech <small>(${automaName})</small></span></button><button class="piece-choice choice-human" onclick="setPiece(${id},'human','character')">${iconMini('character', humanColor)}<span>Jij · character <small>(${humanName})</small></span></button><button class="piece-choice choice-automa" onclick="setPiece(${id},'automa','character')">${iconMini('character', automaColor)}<span>Automa · character <small>(${automaName})</small></span></button><button class="piece-choice choice-encounter" onclick="toggleEncounter(${id})"><span class="fa-icon" style="color:#f4b942"><i class="fa-solid fa-compass"></i></span><span>${encounterPresent ? 'Verwijder encounter token' : 'Plaats encounter token'}</span></button><button class="piece-choice choice-clear" onclick="clearHex(${id})">Maak hex leeg</button></div>`;
+    var humanColor=factionColorForOwner('human'),automaColor=factionColorForOwner('automa');
+    var humanName=factionData[$('#humanFaction').value].name,automaName=factionData[$('#automaFaction').value].name;
+    var encounterPresent=markers.encounter.has(id);
+    menu.innerHTML='<div class="hex-menu-head"><div><div class="label">Hex '+(id+1)+'</div><div class="hex-menu-title">Units</div></div><button class="hex-menu-close" onclick="closeHexMenu()">×</button></div><div class="choice-grid">'+
+      stackRow(id,'human','worker','Jij · worker',humanColor,humanName)+stackRow(id,'automa','worker','Automa · worker',automaColor,automaName)+
+      stackRow(id,'human','mech','Jij · mech',humanColor,humanName)+stackRow(id,'automa','mech','Automa · mech',automaColor,automaName)+
+      stackRow(id,'human','character','Jij · character',humanColor,humanName)+stackRow(id,'automa','character','Automa · character',automaColor,automaName)+
+      '<button class="piece-choice choice-encounter" onclick="toggleEncounter('+id+')"><span class="fa-icon" style="color:#f4b942"><i class="fa-solid fa-compass"></i></span><span>'+(encounterPresent?'Verwijder encounter token':'Plaats encounter token')+'</span></button><button class="piece-choice choice-clear" onclick="clearHex('+id+')">Maak hex leeg</button></div>';
     menu.classList.remove('hidden');
-    const x = Math.min(e.clientX - rect.left + 10, rect.width - 280), y = Math.min(e.clientY - rect.top + 10, rect.height - 330);
-    menu.style.left = Math.max(8, x) + 'px';
-    menu.style.top = Math.max(8, y) + 'px';
 }
+function openHexMenu(id,e){
+    openHexMenuById(id);
+    var menu=$('#hexMenu'),rect=$('.board-wrap').getBoundingClientRect();
+    var cx=(e&&e.clientX)||rect.left+rect.width/2, cy=(e&&e.clientY)||rect.top+rect.height/2;
+    var x=Math.min(cx-rect.left+10,rect.width-300),y=Math.min(cy-rect.top+10,rect.height-430);
+    menu.style.left=Math.max(8,x)+'px';menu.style.top=Math.max(8,y)+'px';
+}
+
 function closeHexMenu() { $('#hexMenu').classList.add('hidden'); }
 function highlight() { render(); }
 function territoryClick() { }
 function unitClick() { }
-let gameStarted = false;
+var gameStarted = false;
 function showSetup() {
     gameStarted = false;
     $('#setupFields').classList.remove('hidden');
@@ -963,13 +1504,14 @@ function newGameWizard() {
 $('#draw').onclick = draw;
 $('#reset').onclick = newGameWizard;
 $('#startGame').onclick = startConfiguredGame;
-$('#difficulty').onchange = () => { };
-$('#humanFaction').onchange = () => { ensureDistinctFactions('human'); renderAll(); };
-$('#automaFaction').onchange = () => { ensureDistinctFactions('automa'); renderAll(); };
-$('#power').onchange = () => { checkPowerStar(); renderAll(); };
+$('#difficulty').onchange = function () { };
+$('#humanFaction').onchange = function () { ensureDistinctFactions('human'); renderAll(); };
+$('#automaFaction').onchange = function () { ensureDistinctFactions('automa'); renderAll(); };
+$('#power').onchange = function () { checkPowerStar(); renderAll(); };
 // Render the default Saxony vs Nordic setup preview, but keep the setup step visible.
 resetGame();
 showSetup();
+
 </script>
 </body>
 </html>
