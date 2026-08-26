@@ -79,6 +79,7 @@ button,.territory,.combat-bolt,.piece-choice{touch-action:manipulation;-webkit-t
 #jsError{position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;display:none;
 background:#3b1117;color:#ffd8dd;border:1px solid #8d3340;border-radius:10px;
 padding:10px 12px;font:12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif}
+.faction-restriction{display:inline-flex;align-items:center;gap:4px;margin-left:4px;color:var(--muted);white-space:nowrap}.faction-dot{width:7px;height:7px;border-radius:50%;background:var(--faction-color);box-shadow:0 0 0 1px #0008;flex:none}.faction-name{font-size:10px}.chip.gained{border-color:var(--accent);font-weight:650}
 
 
 /* Last movement + stacked-piece UI */
@@ -305,6 +306,10 @@ var factionData = {
     black: { name: 'Saxony', color: '#e58a2a', adjacent: [[6, 2], [7, 0]] },
     purple: { name: 'Togawa', color: '#8d5cc5', adjacent: [[5, 6], [6, 5]] }
 };
+function factionRestriction(faction) {
+    var data = factionData[faction], name = data ? data.name : faction, color = data ? data.color : '#ffffff';
+    return "<span class=\"faction-restriction\" aria-label=\"alleen voor ".concat(name, "\"><span class=\"faction-dot\" aria-hidden=\"true\" style=\"--faction-color:").concat(color, "\"></span><span class=\"faction-name\">").concat(name, "</span></span>");
+}
 function factionColorForOwner(owner) {
     var _a;
     var selectId = owner === 'human' ? '#humanFaction' : '#automaFaction';
@@ -944,22 +949,27 @@ function executeMove(m) {
 function gainOne(a, log) {
     var _a;
     if (!factionMatches(a))
-        return;
+        return false;
     var q = (_a = a.q) !== null && _a !== void 0 ? _a : 1;
+    var gained = false;
     if (a.t === 'gold') {
         var bonus = game.profile.t === 'very hard' ? 1 : 0;
         game.coins += q + bonus;
         log.push("+".concat(q + bonus, " coin").concat(q + bonus === 1 ? '' : 's'));
+        gained = true;
     }
     if (a.t === 'power') {
         var bonus = game.profile.t === 'very hard' ? 1 : 0;
         var gain = q + bonus;
-        $('#power').value = Math.min(16, +$('#power').value + gain);
+        var power = +$('#power').value, nextPower = Math.min(16, power + gain);
+        $('#power').value = nextPower;
         log.push("+".concat(gain, " power"));
+        gained = nextPower > power;
     }
     if (a.t === 'powercard') {
         game.combatCards += q;
         log.push("+".concat(q, " combat card").concat(q === 1 ? '' : 's'));
+        gained = true;
     }
     if (a.t === 'worker') {
         var deployed = 0;
@@ -969,6 +979,7 @@ function gainOne(a, log) {
         }
         if (deployed)
             log.push("".concat(deployed, " worker").concat(deployed === 1 ? '' : 's', " deployed op home base"));
+        gained = deployed > 0;
     }
     if (a.t === 'charormech') {
         var deployed = [];
@@ -984,7 +995,9 @@ function gainOne(a, log) {
         }
         if (deployed.length)
             log.push("".concat(deployed.join(' + '), " deployed op home base"));
+        gained = deployed.length > 0;
     }
+    return gained;
 }
 function checkPowerStar() {
     if (!game.powerStar && +$('#power').value >= 16) {
@@ -1035,7 +1048,7 @@ function draw() {
     game.combatVisible = false;
     game.combatTerritory = null;
     game.combatCardMode = false;
-    var actionSet = card.actions[phaseForCard], executed = [], gainLog = [];
+    var actionSet = card.actions[phaseForCard], executed = [], gainLog = [], gainedActions = [];
     var chosen = null;
     if (!skip) {
         if (game.profile.t === 'very hard') {
@@ -1081,13 +1094,16 @@ function draw() {
             }
         }
         // Gains happen after movement, so newly deployed units cannot move until a later turn.
-        actionSet.gets.forEach(function (a) { return gainOne(a, gainLog); });
+        actionSet.gets.forEach(function (a) {
+            if (gainOne(a, gainLog))
+                gainedActions.push(a);
+        });
         checkPowerStar();
         if (!game.gameOver)
             advanceTracker(card);
     }
     game.discards.push(card.id);
-    renderCard(card, phaseForCard, chosen, skip, false);
+    renderCard(card, phaseForCard, chosen, skip, false, gainedActions);
     renderAll();
     if (game.activeCombat)
         openCombatOverlay();
@@ -1119,14 +1135,15 @@ var moveLabel = function (a) {
     return ({ worker: 'Move worker', mech: 'Move mech', character: 'Move character', facobj: 'Factory / Encounter' })[a.t] || a.t;
 };
 var gainLabel = function (a) { var _a; return "".concat((_a = a.q) !== null && _a !== void 0 ? _a : 1, "\u00D7 ").concat({ gold: 'coin', power: 'power', powercard: 'combat card', worker: 'worker', charormech: 'character/mech' }[a.t] || a.t).concat(a.faction ? " \u00B7 ".concat(a.faction, " only") : ''); };
-function renderCard(card, phaseForCard, chosen, skip, combatOnly) {
+function renderCard(card, phaseForCard, chosen, skip, combatOnly, gainedActions) {
     var a = card.actions[phaseForCard];
+    var gained = gainedActions || [];
     var body = "<div class=\"card-head\"><strong>Kaart #".concat(card.id + 1, "</strong><span class=\"badge\">").concat(combatOnly ? 'Combat' : phaseForCard ? 'Scheme II' : 'Scheme I', "</span></div>");
     if (!combatOnly) {
         if (skip)
             body += "<div class=\"notice\">Autometta slaat deze volledige beurt over.</div>";
         else
-            body += "<div class=\"label\">Movement \u00B7 eerste geldige actie</div><div class=\"chips\">".concat(a.move.map(function (x) { return "<span class=\"chip ".concat(x === chosen ? 'primary' : '', "\">").concat(moveLabel(x)).concat(x.faction ? " \u00B7 ".concat(x.faction) : '', "</span>"); }).join(''), "</div><div class=\"sep\"></div><div class=\"label\">Gains</div><div class=\"chips\">").concat(a.gets.length ? a.gets.map(function (x) { return "<span class=\"chip\">".concat(gainLabel(x), "</span>"); }).join('') : '<span class="muted">Geen</span>', "</div><div class=\"sep\"></div><div class=\"label\">Enlist bonus</div><div class=\"chips\">").concat(a.enlist.length ? a.enlist.map(function (x) { return "<span class=\"chip\">".concat(x, "</span>"); }).join('') : '<span class="muted">Geen</span>', "</div><div class=\"sep\"></div><div class=\"label\">Star tracker</div><span class=\"chip\">").concat(card.star ? 'Advance' : 'Geen advance', "</span>");
+            body += "<div class=\"label\">Movement \u00B7 eerste geldige actie</div><div class=\"chips\">".concat(a.move.map(function (x) { return "<span class=\"chip ".concat(x === chosen ? 'primary' : '', "\">").concat(moveLabel(x)).concat(x.faction ? factionRestriction(x.faction) : '', "</span>"); }).join(''), "</div><div class=\"sep\"></div><div class=\"label\">Gains</div><div class=\"chips\">").concat(a.gets.length ? a.gets.map(function (x) { return "<span class=\"chip ".concat(gained.indexOf(x) !== -1 ? 'primary gained' : '', "\">").concat(gainLabel(x), "</span>"); }).join('') : '<span class="muted">Geen</span>', "</div><div class=\"sep\"></div><div class=\"label\">Enlist bonus</div><div class=\"chips\">").concat(a.enlist.length ? a.enlist.map(function (x) { return "<span class=\"chip\">".concat(x, "</span>"); }).join('') : '<span class="muted">Geen</span>', "</div><div class=\"sep\"></div><div class=\"label\">Star tracker</div><span class=\"chip\">").concat(card.star ? 'Advance' : 'Geen advance', "</span>");
     }
     var showCombat = combatOnly || (chosen === null || chosen === void 0 ? void 0 : chosen.t) === 'attack';
     if (showCombat)
